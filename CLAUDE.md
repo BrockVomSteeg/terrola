@@ -1,6 +1,8 @@
 # CLAUDE.md
 
 A private shared map (Next.js, Supabase, Mapbox). `SPEC.md` is the contract: read it first.
+Purpose: a free, open source showpiece on the owner's public GitHub that proves production grade
+work (SPEC sections 1 and 9). No money model for now.
 
 ## Rules for every session
 - Plain words in chat, short answers, no jargon the owner did not use first.

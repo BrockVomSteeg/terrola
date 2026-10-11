@@ -85,3 +85,22 @@ scanned. The owner decides when.
 
 See `CLAUDE.md`. The owner approved the contract on 2026-10-11. A demo login bypass and any
 change to session or password handling are auth design changes and need owner approval first.
+
+## 9. Public face
+
+Owner decisions, 2026-10-11. Purpose: a free, open source showpiece on the owner's public GitHub
+profile that proves he can build and ship production grade software. It also works as a resume.
+There is no money model for now. Any ad, payment or sponsor link needs the owner first.
+
+- Shape: the GitHub repository is the front door. The README leads with a live demo link: an open,
+  read only demo on made up data, hosted free on Vercel Hobby. No separate website. A custom domain
+  is optional and the owner's call.
+- A visitor should conclude within 30 seconds: it is secure and tested; it was built by directing
+  AI agents with discipline (plan first, checks as code); it looks finished and works; real
+  people could use it.
+- README order: one line pitch, demo link, picture or short screen video, a proof table (what this
+  shows, and the file or check that shows it), numbers taken from CI, run it yourself, what was
+  refused and why, how it was built, credits, licence. A claim with no link to proof does not go in.
+- Licence: MIT. The owner may change it before the repository is made public.
+- Placement: Terrola is a side project. The owner's main venture stays first on his profile. The
+  README names it in one footer line; the two are not co-branded.
