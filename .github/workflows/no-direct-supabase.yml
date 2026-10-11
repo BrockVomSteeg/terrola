@@ -1,0 +1,42 @@
+name: no-direct-supabase
+
+on:
+  pull_request:
+    branches: [main]
+
+# Least privilege: the check only greps the checkout.
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Block direct Supabase imports outside server-only paths
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Anything outside app/api/* and lib/supabase-server.ts must never
+          # import @supabase/supabase-js or reach into a Supabase client.
+          # The frontend talks to Supabase exclusively through /api/* routes
+          # so the browser bundle holds no DB access.
+          # --exclude= matches BASENAME only (per GNU/BSD grep). The
+          # server-only admin client is the single legitimate import site
+          # of @supabase/supabase-js outside app/api/*.
+          if grep -rn -E "@supabase/supabase-js|getSupabaseClient|createBrowserClient|createClientComponentClient" \
+            --include="*.ts" --include="*.tsx" \
+            --exclude-dir=node_modules --exclude-dir=.next \
+            --exclude-dir=app/api \
+            --exclude=supabase-server.ts \
+            . ; then
+            echo ""
+            echo "::error::Direct Supabase imports found outside app/api/* and lib/supabase-server.ts."
+            echo "All Supabase access must go through app/api/* routes. The browser bundle"
+            echo "must NEVER contain a Supabase client. See lib/api-client.ts for the proxy"
+            echo "pattern and SPEC.md for the access rules."
+            exit 1
+          fi
+          echo "OK: no direct Supabase imports detected outside the allowed server paths."
