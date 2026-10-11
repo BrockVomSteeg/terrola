@@ -14,8 +14,8 @@
     "bcryptjs": "^3.0.3",
     "mapbox-gl": "^3.28.1",
     "next": "16.4.0",
-    "react": "19.2.8",
-    "react-dom": "19.2.8"
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
   },
   "devDependencies": {
     "@playwright/test": "^1.62.1",
