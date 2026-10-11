@@ -1,0 +1,57 @@
+{
+  "protected": [
+    "SPEC.md",
+    "CLAUDE.md",
+    "LANES.json",
+    "CODEOWNERS",
+    ".github/**",
+    "scripts/gates/**"
+  ],
+  "lanes": {
+    "access": [
+      "proxy.ts",
+      "instrumentation.ts",
+      "scripts/check-env.mjs",
+      "lib/session.ts",
+      "lib/identity.ts",
+      "lib/auth.ts",
+      "lib/members.ts",
+      "lib/mode.ts",
+      "lib/supabase-server.ts",
+      "lib/demo/**",
+      "public/demo/**",
+      "app/api/**",
+      "app/page.tsx",
+      "app/map/page.tsx",
+      "components/UI/DemoBanner.tsx",
+      "components/UI/PasswordGate.tsx",
+      "components/Map/**",
+      "types/**",
+      "supabase/**"
+    ],
+    "tests": ["tests/**", "playwright.config.ts", "playwright.local.config.ts", "scripts/run-tests.mjs"],
+    "docs": ["README.md", "SECURITY.md", "PRIVACY.md", "CONTRIBUTING.md", "ARCHITECTURE.md", "docs/**", "THIRD_PARTY_NOTICES.md"],
+    "ci": [
+      ".github/**",
+      "package.json",
+      "package-lock.json",
+      "vercel.json",
+      "next.config.ts",
+      "tsconfig.json",
+      "postcss.config.mjs",
+      "eslint.config.mjs",
+      "scripts/gates/**",
+      "scripts/rename-project.mjs"
+    ],
+    "brand": [
+      "lib/brand.ts",
+      "lib/constants.ts",
+      "app/layout.tsx",
+      "app/globals.css",
+      "app/global-error.tsx",
+      "app/favicon.ico",
+      "public/manifest.json",
+      "public/icon*"
+    ]
+  }
+}

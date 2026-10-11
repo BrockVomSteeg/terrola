@@ -1,0 +1,7 @@
+# Changes to the rules and the gates always need the owner.
+/SPEC.md            @BrockVomSteeg
+/CLAUDE.md          @BrockVomSteeg
+/LANES.json         @BrockVomSteeg
+/CODEOWNERS         @BrockVomSteeg
+/.github/           @BrockVomSteeg
+/scripts/gates/     @BrockVomSteeg

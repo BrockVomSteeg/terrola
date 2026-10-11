@@ -1,0 +1,43 @@
+name: lockfile
+
+# Resolves dependencies and uploads package-lock.json as an artifact. Run on demand
+# (workflow_dispatch). Nothing is installed or executed: --package-lock-only only writes
+# the lockfile. Download the artifact and commit it on the branch you ran this for.
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - package.json
+      - .github/workflows/lockfile.yml
+
+permissions:
+  contents: read
+
+jobs:
+  lock:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Stop if the kill switch is on
+        if: ${{ vars.AUTONOMY_KILL_SWITCH == 'true' }}
+        run: |
+          echo "AUTONOMY_KILL_SWITCH is true"
+          exit 1
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '20'
+
+      - name: Resolve the lockfile
+        run: npm install --package-lock-only --ignore-scripts
+
+      - name: Upload the lockfile
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
+        with:
+          name: package-lock
+          path: package-lock.json
+          if-no-files-found: error
