@@ -34,7 +34,7 @@ native apps, payments, ads, third party error reporting or analytics.
 | R7 | Supply chain: CI installs with `npm ci --ignore-scripts`; a lockfile diff lists every added package and a new dependency needs owner approval; actions pinned by SHA; workflows use least privilege; no `pull_request_target`. | CI |
 | R8 | Cold clone: `git clone`, `npm ci`, `npm test` pass with no env file and no Mapbox token. Zero tests run is a failure. | `cold-clone` job |
 | R9 | Provenance: every file in `public/` is listed in `docs/ASSETS.md` with source and licence. | `scripts/gates/provenance.mjs` |
-| R10 | Ownership: every file has one owner lane (`LANES.json`). A lane PR touches only its files. Gates, workflows, `CLAUDE.md`, `SPEC.md`, `LANES.json` and `CODEOWNERS` change only with owner review. | `scripts/gates/lane-ownership.mjs`, CODEOWNERS |
+| R10 | Ownership: every file has one owner lane (`LANES.json`). A lane PR touches only its files. Gates, workflows, `CLAUDE.md`, `SPEC.md`, `LANES.json`, `CODEOWNERS` and `LICENSE` change only with owner review. | `scripts/gates/lane-ownership.mjs`, CODEOWNERS |
 | R11 | Mapbox terms: the logo and attribution are never hidden, dimmed or scaled below legible. | `scripts/gates/brand.mjs` |
 | R12 | Privacy: no analytics, no session replay, no third party error reporting. `PRIVACY.md` names Mapbox and hosting logs. | review |
 | R13 | Accessibility: text contrast meets WCAG AA. Lighthouse accessibility and best practices at least 90 on the demo, performance at least 70 on the mobile preset, reasons written in `docs/`. | Lighthouse job |
@@ -98,20 +98,24 @@ Ads, payments, paid tiers and sponsor links need the owner first (`CLAUDE.md`).
   open and read only, on made up data. Hosting is free on Vercel Hobby; Mapbox is metered past its
   free allowance, so the owner restricts its token to the demo address and sets a usage alert. A
   custom domain is optional and the owner's call.
-- A visitor can verify within 30 seconds that it works (the demo), that its tests and security
-  checks are visible and pass in CI, and how it was built (plan first, checks as code, AI agents
-  directed, independent review).
+- A visitor can verify within 30 seconds that it works (the demo) and that its tests and security
+  checks are visible and pass in CI, and can read how it was built (`SPEC.md`, `CLAUDE.md`,
+  `LANES.json` and the gates in `scripts/gates/`).
 - README order: the one line pitch (`tagline` in `lib/brand.ts`), then the demo link, then a
   picture or short screen video, a proof table (each claim and the file or check that shows it),
-  numbers, run it yourself, what was refused and why (features and dependencies, for example
-  analytics, ads and accounts), how it was built, credits, licence. A claim with no proof does
-  not go in.
+  numbers, run it yourself, what was refused or deferred and why (features and dependencies, for
+  example analytics, ads and accounts), how it was built, credits, licence. A claim with no proof
+  does not go in.
 - Numbers: counted by the docs lane from CI output (test count, number of gates, the R13
-  Lighthouse scores). No workflow writes `README.md` (R10). Proof links point to files in the
-  repository or, after publishing, to the public repository's own checks.
-- Picture or video: made from the demo (made up data) by a CI Playwright run or by the owner,
-  never from a live instance. It lives under `docs/` (docs lane); anything under `public/` is
-  listed in `docs/ASSETS.md` (R9).
-- Footer line: if the README links to the owner's other work, the owner supplies the exact line.
-  Plain text in `README.md` only, never in the demo UI, `lib/brand.ts` or the manifest.
-- Licence: MIT. Only the owner changes `LICENSE`, and only before the public snapshot is pushed.
+  Lighthouse scores). No workflow writes `README.md` (R10). Proof links are relative links to files
+  in the repository, written before publishing. Links to the public repository's own checks are
+  added in the private repository and go out with the next snapshot the owner approves.
+- Picture or video: made from the hosted demo (made up data, `E2E_BASE` set to its address so the
+  real map tiles show) by a CI Playwright run or by the owner, never from a live instance, with
+  the Mapbox logo and attribution in frame (R11). It lives under `docs/` (docs lane); anything
+  under `public/` is listed in `docs/ASSETS.md` (R9).
+- Footer line: if the README links to the owner's other work, the owner supplies the exact line:
+  one line of text, no logo or badge, in `README.md` only, never in the demo UI, `lib/brand.ts` or
+  the manifest.
+- Licence: MIT. Only the owner changes `LICENSE` (protected in `LANES.json`, listed in
+  `CODEOWNERS`), and only before the public snapshot is pushed.
