@@ -88,19 +88,30 @@ change to session or password handling are auth design changes and need owner ap
 
 ## 9. Public face
 
-Owner decisions, 2026-10-11. Purpose: a free, open source showpiece on the owner's public GitHub
-profile that proves he can build and ship production grade software. It also works as a resume.
-There is no money model for now. Any ad, payment or sponsor link needs the owner first.
+Owner guidance, 2026-10-11. No gate checks this section; the independent review in section 6 does.
 
-- Shape: the GitHub repository is the front door. The README leads with a live demo link: an open,
-  read only demo on made up data, hosted free on Vercel Hobby. No separate website. A custom domain
-  is optional and the owner's call.
-- A visitor should conclude within 30 seconds: it is secure and tested; it was built by directing
-  AI agents with discipline (plan first, checks as code); it looks finished and works; real
-  people could use it.
-- README order: one line pitch, demo link, picture or short screen video, a proof table (what this
-  shows, and the file or check that shows it), numbers taken from CI, run it yourself, what was
-  refused and why, how it was built, credits, licence. A claim with no link to proof does not go in.
-- Licence: MIT. The owner may change it before the repository is made public.
-- Placement: Terrola is a side project. The owner's main venture stays first on his profile. The
-  README names it in one footer line; the two are not co-branded.
+Purpose: a free, open source portfolio project on the owner's public GitHub profile that shows
+careful, tested work: production practices, each with evidence. There is no money model for now.
+Ads, payments, paid tiers and sponsor links need the owner first (`CLAUDE.md`).
+
+- Shape: the public repository (section 7) is the front door. No separate website. The demo is
+  open and read only, on made up data. Hosting is free on Vercel Hobby; Mapbox is metered past its
+  free allowance, so the owner restricts its token to the demo address and sets a usage alert. A
+  custom domain is optional and the owner's call.
+- A visitor can verify within 30 seconds that it works (the demo), that its tests and security
+  checks are visible and pass in CI, and how it was built (plan first, checks as code, AI agents
+  directed, independent review).
+- README order: the one line pitch (`tagline` in `lib/brand.ts`), then the demo link, then a
+  picture or short screen video, a proof table (each claim and the file or check that shows it),
+  numbers, run it yourself, what was refused and why (features and dependencies, for example
+  analytics, ads and accounts), how it was built, credits, licence. A claim with no proof does
+  not go in.
+- Numbers: counted by the docs lane from CI output (test count, number of gates, the R13
+  Lighthouse scores). No workflow writes `README.md` (R10). Proof links point to files in the
+  repository or, after publishing, to the public repository's own checks.
+- Picture or video: made from the demo (made up data) by a CI Playwright run or by the owner,
+  never from a live instance. It lives under `docs/` (docs lane); anything under `public/` is
+  listed in `docs/ASSETS.md` (R9).
+- Footer line: if the README links to the owner's other work, the owner supplies the exact line.
+  Plain text in `README.md` only, never in the demo UI, `lib/brand.ts` or the manifest.
+- Licence: MIT. Only the owner changes `LICENSE`, and only before the public snapshot is pushed.
