@@ -6,21 +6,29 @@ on:
   push:
     branches: [main]
 
-# Least privilege: the build only reads the repo (an absent permissions block
+# Least privilege: every job only reads the repo (an absent permissions block
 # would grant the default GITHUB_TOKEN write scopes it never needs).
 permissions:
   contents: read
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
+      - name: Stop if the kill switch is on
+        if: ${{ vars.AUTONOMY_KILL_SWITCH == 'true' }}
+        run: |
+          echo "AUTONOMY_KILL_SWITCH is true"
+          exit 1
+
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
 
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: '20'
+          node-version: '24'
           cache: 'npm'
 
       - name: Install dependencies
@@ -33,3 +41,62 @@ jobs:
         run: npm run build
         env:
           NEXT_PUBLIC_MAPBOX_TOKEN: ${{ secrets.NEXT_PUBLIC_MAPBOX_TOKEN || 'pk.placeholder' }}
+          NEXT_TELEMETRY_DISABLED: '1'
+
+  unit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Stop if the kill switch is on
+        if: ${{ vars.AUTONOMY_KILL_SWITCH == 'true' }}
+        run: |
+          echo "AUTONOMY_KILL_SWITCH is true"
+          exit 1
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Unit tests (no browser, no network, no env file)
+        run: npm test
+
+  gates:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Stop if the kill switch is on
+        if: ${{ vars.AUTONOMY_KILL_SWITCH == 'true' }}
+        run: |
+          echo "AUTONOMY_KILL_SWITCH is true"
+          exit 1
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          # The lane gate compares the branch with main, so it needs history.
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '24'
+
+      - name: Brand gate
+        run: node scripts/gates/brand.mjs
+
+      # The script and the lane map come from main, never from the pull request,
+      # so a pull request cannot edit the gate that judges it.
+      - name: Lane ownership gate
+        run: |
+          git show origin/main:scripts/gates/lane-ownership.mjs > "$RUNNER_TEMP/lane-ownership.mjs"
+          node "$RUNNER_TEMP/lane-ownership.mjs"
+        env:
+          LANE_BRANCH: ${{ github.head_ref || github.ref_name }}
+          BASE_REF: origin/main
