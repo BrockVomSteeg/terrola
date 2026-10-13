@@ -1,7 +1,27 @@
 import { NextRequest, NextResponse } from "next/server";
 import { checkRateLimit, RATE_LIMITS } from "@/app/api/_lib/rate-limit";
+import { getMode } from "@/lib/mode";
+
+/** Place search belongs to adding a place, which only a logged in live user can do. */
+function isLive(): boolean {
+  try {
+    return getMode() === "live";
+  } catch {
+    return false;
+  }
+}
 
 export async function GET(request: NextRequest) {
+  // A demo has no login. Closed before anything else: nothing a stranger types is
+  // sent on to Mapbox from this server, and a demo cannot be used to spend the map
+  // allowance.
+  if (!isLive()) {
+    return NextResponse.json(
+      { error: "Not found" },
+      { status: 404, headers: { "Cache-Control": "no-store" } },
+    );
+  }
+
   const rl = checkRateLimit(
     request,
     "geocode",
