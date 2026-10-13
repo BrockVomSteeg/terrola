@@ -8,7 +8,7 @@ import {
   getSessionKey,
   sessionCookieOptions,
 } from "@/lib/session";
-import { generateCsrfToken, setCsrfCookie } from "./csrf";
+import { csrfTokenFor, setCsrfCookie } from "./csrf";
 import { trustedClientBucket, type Limiter } from "./rate-limit";
 
 type Env = Record<string, string | undefined>;
@@ -187,13 +187,16 @@ export async function login(
   // password cannot reach. Fail closed anyway: no token, no session.
   const token = await createSessionToken(undefined, env);
   if (!token) return answer({ error: "Server misconfigured" }, 503);
+  const csrf = await csrfTokenFor(token, env);
+  if (!csrf) return answer({ error: "Server misconfigured" }, 503);
 
   if (client) deps.perClient.clear(client);
 
   const response = answer({ success: true }, 200);
   response.cookies.set({ ...sessionCookieOptions(env), value: token });
-  // The frontend reads app_csrf and echoes it as X-CSRF-Token on every
-  // state-changing request (double-submit cookie pattern).
-  setCsrfCookie(response, generateCsrfToken());
+  // The page reads app_csrf and sends it back as X-CSRF-Token on every write.
+  // The value is tied to this session: the server recomputes it from the
+  // session cookie and never trusts the app_csrf cookie itself.
+  setCsrfCookie(response, csrf, env);
   return response;
 }

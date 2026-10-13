@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin, freshenCoverUrls } from "@/lib/supabase-server";
 import { attachCoverLqip } from "@/lib/photos";
 import { filterLiveLocations, isNullIslandCoord } from "@/lib/locations";
-import { verifyCsrf } from "@/app/api/_lib/csrf";
+import { checkCsrf } from "@/app/api/_lib/csrf";
 import { checkRateLimit, RATE_LIMITS } from "@/app/api/_lib/rate-limit";
 import type { CategoryKey, Location } from "@/types";
 
@@ -61,7 +61,7 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
-  if (!verifyCsrf(request)) {
+  if (!(await checkCsrf(request)).ok) {
     return NextResponse.json(
       { error: "CSRF token missing or invalid" },
       { status: 403 },

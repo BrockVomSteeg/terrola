@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase-server";
 import { thumbName, cardName } from "@/lib/photos";
-import { verifyCsrf } from "@/app/api/_lib/csrf";
+import { checkCsrf } from "@/app/api/_lib/csrf";
 import { checkRateLimit, RATE_LIMITS } from "@/app/api/_lib/rate-limit";
 
 const UUID_REGEX =
@@ -12,7 +12,7 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  if (!verifyCsrf(request)) {
+  if (!(await checkCsrf(request)).ok) {
     return NextResponse.json(
       { error: "CSRF token missing or invalid" },
       { status: 403 },

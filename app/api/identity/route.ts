@@ -5,7 +5,11 @@ import {
   decodeSessionPayload,
   sessionCookieOptions,
 } from "@/lib/session";
-import { verifyCsrf } from "@/app/api/_lib/csrf";
+import {
+  checkCsrf,
+  csrfTokenFor,
+  setCsrfCookie,
+} from "@/app/api/_lib/csrf";
 import { isMemberId } from "@/lib/members";
 
 // The proxy asks for a valid session here, like every row marked `session` in
@@ -21,7 +25,7 @@ import { isMemberId } from "@/lib/members";
 // caller already holds a valid version of. Anyone who can reach it can already
 // reach /api/locations.
 export async function POST(request: NextRequest) {
-  if (!verifyCsrf(request)) {
+  if (!(await checkCsrf(request)).ok) {
     return NextResponse.json(
       { error: "CSRF token missing or invalid" },
       { status: 403 },
@@ -52,7 +56,8 @@ export async function POST(request: NextRequest) {
   // Re-sign the SAME session, adding the member id. Preserve the original
   // `iat` so choosing a member never extends the 30-day session.
   const token = await createSessionToken({ person, iat: payload.iat });
-  if (!token) {
+  const csrf = await csrfTokenFor(token);
+  if (!token || !csrf) {
     return NextResponse.json(
       { error: "Server misconfigured" },
       { status: 500 },
@@ -61,6 +66,8 @@ export async function POST(request: NextRequest) {
 
   const response = NextResponse.json({ success: true, person });
   response.cookies.set({ ...sessionCookieOptions(), value: token });
+  // The write token is tied to the session value, which has just changed.
+  setCsrfCookie(response, csrf);
   return response;
 }
 
@@ -68,7 +75,7 @@ export async function POST(request: NextRequest) {
 // picks up the device next is asked again. Same CSRF + re-sign path as POST,
 // same preserved `iat`.
 export async function DELETE(request: NextRequest) {
-  if (!verifyCsrf(request)) {
+  if (!(await checkCsrf(request)).ok) {
     return NextResponse.json(
       { error: "CSRF token missing or invalid" },
       { status: 403 },
@@ -85,7 +92,8 @@ export async function DELETE(request: NextRequest) {
   }
 
   const token = await createSessionToken({ iat: payload.iat });
-  if (!token) {
+  const csrf = await csrfTokenFor(token);
+  if (!token || !csrf) {
     return NextResponse.json(
       { error: "Server misconfigured" },
       { status: 500 },
@@ -94,5 +102,6 @@ export async function DELETE(request: NextRequest) {
 
   const response = NextResponse.json({ success: true });
   response.cookies.set({ ...sessionCookieOptions(), value: token });
+  setCsrfCookie(response, csrf);
   return response;
 }

@@ -6,13 +6,7 @@ import {
   login,
   type LoginDeps,
 } from "@/app/api/_lib/login";
-import { NextRequest } from "next/server";
-import {
-  CSRF_COOKIE,
-  CSRF_HEADER,
-  generateCsrfToken,
-  verifyCsrf,
-} from "@/app/api/_lib/csrf";
+import { CSRF_COOKIE, csrfTokenFor } from "@/app/api/_lib/csrf";
 import { createLimiter } from "@/app/api/_lib/rate-limit";
 import { verifySessionToken } from "@/lib/session";
 
@@ -226,8 +220,15 @@ test.describe("login: the password and the session", () => {
     expect(header).toMatch(/;\s*Max-Age=2592000/i);
     expect(header).not.toMatch(/;\s*Domain=/i);
 
+    // The write token is the one for exactly this session, and the page can read it.
     const csrf = res.cookies.get(CSRF_COOKIE);
     expect(csrf?.value).toMatch(/^[0-9a-f]{64}$/);
+    expect(csrf?.value).toBe(await csrfTokenFor(session?.value, LIVE));
+    const csrfHeader =
+      res.headers.getSetCookie().find((c) => c.startsWith(`${CSRF_COOKIE}=`)) ?? "";
+    expect(csrfHeader).not.toMatch(/;\s*HttpOnly/i);
+    expect(csrfHeader).toMatch(/;\s*SameSite=strict/i);
+    expect(csrfHeader).toMatch(/;\s*Max-Age=2592000/i);
     // The password, the key and the hash appear nowhere in the answer.
     const everything = JSON.stringify([...res.headers.entries()]);
     for (const secret of [PASSWORD, KEY, HASH]) {
@@ -273,38 +274,6 @@ test.describe("login: the password and the session", () => {
     expect(
       await verifySessionToken(res.cookies.get("app_session")?.value, env),
     ).toBe(true);
-  });
-});
-
-test.describe("CSRF token (double submit)", () => {
-  const token = generateCsrfToken();
-  const request = (header?: string, cookie?: string) =>
-    new NextRequest("http://localhost/api/locations", {
-      method: "POST",
-      headers: {
-        ...(header === undefined ? {} : { [CSRF_HEADER]: header }),
-        ...(cookie === undefined ? {} : { cookie: `${CSRF_COOKIE}=${cookie}` }),
-      },
-    });
-
-  test("a token is 64 lowercase hex characters and never repeats", () => {
-    expect(token).toMatch(/^[0-9a-f]{64}$/);
-    expect(generateCsrfToken()).not.toBe(token);
-  });
-
-  test("the header must equal the cookie", () => {
-    expect(verifyCsrf(request(token, token))).toBe(true);
-    const other = generateCsrfToken();
-    expect(verifyCsrf(request(token, other))).toBe(false);
-    expect(verifyCsrf(request(token, undefined))).toBe(false);
-    expect(verifyCsrf(request(undefined, token))).toBe(false);
-    expect(verifyCsrf(request("", ""))).toBe(false);
-  });
-
-  test("two equal values that are not tokens do not pass", () => {
-    for (const same of ["zz", "not-a-token", token.toUpperCase(), token + "0", token.slice(1)]) {
-      expect(verifyCsrf(request(same, same)), same.slice(0, 12)).toBe(false);
-    }
   });
 });
 
