@@ -32,9 +32,9 @@ native apps, payments, ads, third party error reporting or analytics.
 | R5 | One identity: name, slug, tagline live in `lib/brand.ts`. Renaming is that file, `package.json` and `scripts/rename-project.mjs`. | `scripts/gates/brand.mjs` |
 | R6 | Licences: production dependencies are MIT, ISC, BSD, Apache-2.0, 0BSD, BlueOak, CC0, CC-BY-4.0 data. LGPL only for an optional binary (sharp-libvips). MPL-2.0 and FSL-1.1 dev only. Mapbox GL JS is a named exception. `THIRD_PARTY_NOTICES.md` is generated. | `scripts/gates/licenses.mjs` |
 | R7 | Supply chain: CI installs with `npm ci --ignore-scripts`; a lockfile diff lists every added package and a new dependency needs owner approval; actions pinned by SHA; workflows use least privilege; no `pull_request_target`. | CI |
-| R8 | Cold clone: `git clone`, `npm ci`, `npm test` pass with no env file and no Mapbox token. Zero tests run is a failure. | `cold-clone` job |
+| R8 | Cold clone: `git clone`, `npm ci`, `npm test` pass with no env file and no Mapbox token. Zero tests run is a failure. | `unit` job, `cold-clone` job |
 | R9 | Provenance: every file in `public/` is listed in `docs/ASSETS.md` with source and licence. | `scripts/gates/provenance.mjs` |
-| R10 | Ownership: every file has one owner lane (`LANES.json`). A lane PR touches only its files. Gates, workflows, `CLAUDE.md`, `SPEC.md`, `LANES.json`, `CODEOWNERS` and `LICENSE` change only with owner review. | `scripts/gates/lane-ownership.mjs`, CODEOWNERS |
+| R10 | Ownership: every file has one owner lane (`LANES.json`). A lane PR touches only its files. A lane also carries its own unit tests under `tests/unit/<lane>/`. Gates, workflows, `CLAUDE.md`, `SPEC.md`, `LANES.json`, `CODEOWNERS` and `LICENSE` change only with owner review. | `scripts/gates/lane-ownership.mjs`, CODEOWNERS |
 | R11 | Mapbox terms: the logo and attribution are never hidden, dimmed or scaled below legible. | `scripts/gates/brand.mjs` |
 | R12 | Privacy: no analytics, no session replay, no third party error reporting. `PRIVACY.md` names Mapbox and hosting logs. | review |
 | R13 | Accessibility: text contrast meets WCAG AA. Lighthouse accessibility and best practices at least 90 on the demo, performance at least 70 on the mobile preset, reasons written in `docs/`. | Lighthouse job |
@@ -58,11 +58,11 @@ or `NODE_ENV=test`. See `docs/adr/0001-access-control.md`.
 
 | lane | owns | done when |
 |------|------|-----------|
-| access | `proxy.ts`, `instrumentation.ts`, `scripts/check-env.mjs`, `lib/session.ts`, `lib/identity.ts`, `lib/auth.ts`, `lib/members.ts`, `lib/mode.ts`, `lib/supabase-server.ts`, `lib/demo/**`, `public/demo/**`, `app/api/**`, `app/page.tsx`, `app/map/page.tsx`, `components/UI/DemoBanner.tsx`, `components/UI/PasswordGate.tsx`, write controls in `components/Map/**`, `types/**`, `supabase/**` | R3, R4, R14. A stranger opens the demo and sees a populated map with no login. |
+| access | `proxy.ts`, `instrumentation.ts`, `scripts/check-env.mjs`, `lib/session.ts`, `lib/identity.ts`, `lib/auth.ts`, `lib/members.ts`, `lib/mode.ts`, `lib/supabase-server.ts`, `lib/api-client.ts`, `lib/photos.ts`, `lib/image-resize.ts`, `lib/locations.ts`, `lib/useBreakpoint.ts`, `.env.example`, `lib/demo/**`, `public/demo/**`, `app/api/**`, `app/page.tsx`, `app/map/page.tsx`, `components/UI/DemoBanner.tsx`, `components/UI/PasswordGate.tsx`, write controls in `components/Map/**`, `types/**`, `supabase/**`, `tests/unit/access/**` | R3, R4, R14. A stranger opens the demo and sees a populated map with no login. |
 | tests | `tests/**`, `playwright*.config.ts`, `scripts/run-tests.mjs` | R8. Two tiers: offline unit, and demo e2e with `api.mapbox.com` stubbed. |
 | docs | `README.md`, `SECURITY.md`, `PRIVACY.md`, `CONTRIBUTING.md`, `ARCHITECTURE.md`, `docs/**` | A stranger can run it in five minutes from the README. |
-| ci | `.github/**`, `package.json`, `package-lock.json`, `vercel.json`, `next.config.ts`, `tsconfig.json`, lint config, `scripts/gates/**` | R1, R6, R7, R10, R15 run in CI. Lint exists. |
-| brand | `lib/brand.ts`, `app/layout.tsx`, `app/globals.css`, `app/global-error.tsx`, `public/manifest.json`, `public/icon*`, `lib/constants.ts` | R5, R11, R13, R16. |
+| ci | `.github/**`, `package.json`, `package-lock.json`, `vercel.json`, `next.config.ts`, `tsconfig.json`, lint config, `.gitignore`, `AGENTS.md`, `scripts/gates/**`, `tests/unit/ci/**` | R1, R6, R7, R10, R15 run in CI. Lint exists. |
+| brand | `lib/brand.ts`, `app/layout.tsx`, `app/globals.css`, `app/global-error.tsx`, `public/manifest.json`, `public/icon*`, `lib/constants.ts`, `tests/unit/brand/**` | R5, R11, R13, R16. |
 
 Only the `ci` lane edits `package.json` and `package-lock.json`. Dependabot is paused for npm
 during the build wave.

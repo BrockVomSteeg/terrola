@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
-    "test": "playwright test --config=playwright.local.config.ts"
+    "test": "playwright test --config=playwright.unit.config.ts",
+    "test:unit": "playwright test --config=playwright.unit.config.ts",
+    "test:local": "playwright test --config=playwright.local.config.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.3",

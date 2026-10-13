@@ -19,6 +19,12 @@
       "lib/members.ts",
       "lib/mode.ts",
       "lib/supabase-server.ts",
+      "lib/api-client.ts",
+      "lib/photos.ts",
+      "lib/image-resize.ts",
+      "lib/locations.ts",
+      "lib/useBreakpoint.ts",
+      ".env.example",
       "lib/demo/**",
       "public/demo/**",
       "app/api/**",
@@ -28,9 +34,10 @@
       "components/UI/PasswordGate.tsx",
       "components/Map/**",
       "types/**",
-      "supabase/**"
+      "supabase/**",
+      "tests/unit/access/**"
     ],
-    "tests": ["tests/**", "playwright.config.ts", "playwright.local.config.ts", "scripts/run-tests.mjs"],
+    "tests": ["tests/**", "playwright.config.ts", "playwright.local.config.ts", "playwright.unit.config.ts", "scripts/run-tests.mjs"],
     "docs": ["README.md", "SECURITY.md", "PRIVACY.md", "CONTRIBUTING.md", "ARCHITECTURE.md", "docs/**", "THIRD_PARTY_NOTICES.md"],
     "ci": [
       ".github/**",
@@ -42,7 +49,10 @@
       "postcss.config.mjs",
       "eslint.config.mjs",
       "scripts/gates/**",
-      "scripts/rename-project.mjs"
+      "scripts/rename-project.mjs",
+      ".gitignore",
+      "AGENTS.md",
+      "tests/unit/ci/**"
     ],
     "brand": [
       "lib/brand.ts",
@@ -52,7 +62,8 @@
       "app/global-error.tsx",
       "app/favicon.ico",
       "public/manifest.json",
-      "public/icon*"
+      "public/icon*",
+      "tests/unit/brand/**"
     ]
   }
 }
