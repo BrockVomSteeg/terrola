@@ -8,9 +8,14 @@ import { COOKIE_NAME, createSessionToken } from "@/lib/session";
 // server, no network. The full route, method and mode matrix (SPEC R4) builds
 // on these two calls.
 
-const KEYS = ["SESSION_SECRET", "SITE_PASSWORD_HASH"] as const;
+const KEYS = ["SESSION_SECRET", "SITE_PASSWORD_HASH", "NODE_ENV"] as const;
 const TEST_KEY = "unit-test-signing-key-0123456789abcdef";
 const OTHER_KEY = "another-unit-test-key-fedcba9876543210";
+// Shaped like bcrypt output, built at run time. Never a real hash.
+const TEST_HASH = "$2b$04$" + "a".repeat(53);
+
+// The proxy reads the real environment, so these tests set it.
+const env = process.env as Record<string, string | undefined>;
 
 function withSession(path: string, token: string): NextRequest {
   return new NextRequest(`http://localhost${path}`, {
@@ -25,15 +30,16 @@ test.describe("proxy harness", () => {
   let saved: Record<string, string | undefined> = {};
 
   test.beforeEach(() => {
-    saved = Object.fromEntries(KEYS.map((k) => [k, process.env[k]]));
-    for (const k of KEYS) delete process.env[k];
+    saved = Object.fromEntries(KEYS.map((k) => [k, env[k]]));
+    delete env.SESSION_SECRET;
+    delete env.SITE_PASSWORD_HASH;
   });
 
   test.afterEach(() => {
     for (const k of KEYS) {
       const value = saved[k];
-      if (value === undefined) delete process.env[k];
-      else process.env[k] = value;
+      if (value === undefined) delete env[k];
+      else env[k] = value;
     }
   });
 
@@ -61,7 +67,8 @@ test.describe("proxy harness", () => {
   });
 
   test("a request with a valid session passes", async () => {
-    process.env.SESSION_SECRET = TEST_KEY;
+    env.SESSION_SECRET = TEST_KEY;
+    env.SITE_PASSWORD_HASH = TEST_HASH;
     const token = await createSessionToken();
     expect(token).toBeTruthy();
     const res = await proxy(withSession("/api/locations", token ?? ""));
@@ -70,10 +77,13 @@ test.describe("proxy harness", () => {
   });
 
   test("a forged, tampered or wrongly signed session is refused", async () => {
-    process.env.SESSION_SECRET = OTHER_KEY;
+    env.SITE_PASSWORD_HASH = TEST_HASH;
+    env.SESSION_SECRET = OTHER_KEY;
     const signedWithOtherKey = (await createSessionToken()) ?? "";
-    process.env.SESSION_SECRET = TEST_KEY;
+    env.SESSION_SECRET = TEST_KEY;
     const token = (await createSessionToken()) ?? "";
+    expect(token).toBeTruthy();
+    expect(signedWithOtherKey).toBeTruthy();
     const payload = token.split(".")[0];
     const forged = [
       "garbage",
@@ -88,16 +98,55 @@ test.describe("proxy harness", () => {
   });
 
   test("a data request with no session gets 401 JSON", async () => {
-    process.env.SESSION_SECRET = TEST_KEY;
+    env.SESSION_SECRET = TEST_KEY;
+    env.SITE_PASSWORD_HASH = TEST_HASH;
     const res = await proxy(new NextRequest("http://localhost/api/locations"));
     expect(res.status).toBe(401);
     expect(await res.json()).toHaveProperty("error");
   });
 
   test("a page request with no session is sent to the login page", async () => {
-    process.env.SESSION_SECRET = TEST_KEY;
+    env.SESSION_SECRET = TEST_KEY;
+    env.SITE_PASSWORD_HASH = TEST_HASH;
     const res = await proxy(new NextRequest("http://localhost/map"));
     expect(res.status).toBe(307);
     expect(new URL(res.headers.get("location") ?? "").pathname).toBe("/");
+  });
+
+  // SPEC R18: a missing or short key fails closed in every environment. The
+  // old proxy let every request through outside production.
+  for (const nodeEnv of ["production", "development", "test"]) {
+    for (const [label, secret] of [
+      ["no", undefined],
+      ["a short", "only-sixteen-chr"],
+    ] as const) {
+      test(`${label} signing key fails closed with NODE_ENV=${nodeEnv}`, async () => {
+        env.NODE_ENV = nodeEnv;
+        env.SITE_PASSWORD_HASH = TEST_HASH;
+        if (secret) env.SESSION_SECRET = secret;
+
+        const api = await proxy(new NextRequest("http://localhost/api/locations"));
+        expect(api.status).toBe(503);
+        expect(api.headers.get("x-middleware-next")).toBeNull();
+        expect(api.headers.get("cache-control")).toBe("no-store");
+        const body = JSON.stringify(await api.json());
+        expect(body).toContain("SESSION_SECRET");
+        if (secret) expect(body).not.toContain(secret);
+        expect(body).not.toContain(TEST_HASH);
+
+        const page = await proxy(new NextRequest("http://localhost/map"));
+        expect(page.status).toBe(307);
+        expect(page.headers.get("x-middleware-next")).toBeNull();
+        expect(new URL(page.headers.get("location") ?? "").pathname).toBe("/");
+      });
+    }
+  }
+
+  test("a session signed with the password hash is refused", async () => {
+    // The old fallback: no SESSION_SECRET, so the hash signed the session.
+    env.SITE_PASSWORD_HASH = TEST_HASH;
+    expect(await createSessionToken()).toBeNull();
+    const res = await proxy(new NextRequest("http://localhost/api/locations"));
+    expect(res.status).toBe(503);
   });
 });
