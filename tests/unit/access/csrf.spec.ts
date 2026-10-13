@@ -7,7 +7,11 @@ import {
   csrfTokenFor,
   setCsrfCookie,
 } from "@/app/api/_lib/csrf";
-import { COOKIE_MAX_AGE, createSessionToken } from "@/lib/session";
+import {
+  DELETE as forgetMember,
+  POST as chooseMember,
+} from "@/app/api/identity/route";
+import { COOKIE_MAX_AGE, COOKIE_NAME, createSessionToken } from "@/lib/session";
 
 // The write token (ADR 0001 item 7): in live mode a write needs a valid session AND the
 // token made from exactly that session. Every case passes its own environment, so
@@ -259,4 +263,79 @@ test.describe("the token cookie", () => {
     expect(header({ ...LIVE, NODE_ENV: "production" })).toMatch(/;\s*Secure/i);
     expect(header({ ...LIVE, NODE_ENV: "test" })).not.toMatch(/;\s*Secure/i);
   });
+});
+
+// The identity route signs the session again, which changes the token. If it did not
+// hand out the new one, every write after choosing a member would be refused.
+test.describe("signing the session again", () => {
+  // The route reads the real environment, so this test sets it.
+  const env = process.env as Record<string, string | undefined>;
+  const NAMES = ["SESSION_SECRET", "SITE_PASSWORD_HASH", "DEMO_MODE", "MEMBERS"];
+  let saved: Record<string, string | undefined> = {};
+
+  test.beforeEach(() => {
+    saved = Object.fromEntries(NAMES.map((name) => [name, env[name]]));
+    for (const name of NAMES) delete env[name];
+    env.SESSION_SECRET = KEY;
+    env.SITE_PASSWORD_HASH = HASH;
+  });
+  test.afterEach(() => {
+    for (const name of NAMES) {
+      const value = saved[name];
+      if (value === undefined) delete env[name];
+      else env[name] = value;
+    }
+  });
+
+  const call = (method: "POST" | "DELETE", sessionToken: string, header: string) =>
+    new NextRequest("http://localhost/api/identity", {
+      method,
+      headers: {
+        cookie: `${COOKIE_NAME}=${sessionToken}`,
+        [CSRF_HEADER]: header,
+        "content-type": "application/json",
+      },
+      ...(method === "POST" ? { body: JSON.stringify({ person: "member-1" }) } : {}),
+    });
+
+  test("hands out the token for the new session, and the old token stops working", async () => {
+    const first = await session({ age: 60 }, env);
+    const firstToken = await tokenFor(first, env);
+
+    const chosen = await chooseMember(call("POST", first, firstToken));
+    expect(chosen.status).toBe(200);
+    const second = chosen.cookies.get(COOKIE_NAME)?.value ?? "";
+    expect(second).not.toBe("");
+    expect(second).not.toBe(first);
+    const secondToken = chosen.cookies.get(CSRF_COOKIE)?.value ?? "";
+    expect(secondToken).toBe(await tokenFor(second, env));
+    expect(secondToken).not.toBe(firstToken);
+
+    // The browser now holds the second session. The first token no longer fits it.
+    const stale = await forgetMember(call("DELETE", second, firstToken));
+    expect(stale.status).toBe(403);
+    expect(stale.headers.getSetCookie()).toEqual([]);
+
+    const forgotten = await forgetMember(call("DELETE", second, secondToken));
+    expect(forgotten.status).toBe(200);
+    const third = forgotten.cookies.get(COOKIE_NAME)?.value ?? "";
+    expect(forgotten.cookies.get(CSRF_COOKIE)?.value).toBe(await tokenFor(third, env));
+  });
+
+  test("refuses a write with no token or no session before it signs anything", async () => {
+    const first = await session({ age: 60 }, env);
+    const firstToken = await tokenFor(first, env);
+    for (const request of [
+      call("POST", first, "0".repeat(64)),
+      call("POST", `${first}x`, firstToken),
+      call("DELETE", first, ""),
+    ]) {
+      const res = await chooseOrForget(request);
+      expect(res.status).toBe(403);
+      expect(res.headers.getSetCookie()).toEqual([]);
+    }
+  });
+
+  const chooseOrForget = (request: NextRequest) =>
+    request.method === "POST" ? chooseMember(request) : forgetMember(request);
 });
