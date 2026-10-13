@@ -7,6 +7,8 @@ export async function proxy(request: NextRequest) {
     // CLOSED in every environment (SPEC R18): nothing is unlocked because a
     // secret was dropped, mis-rotated or never set. To run with no secrets at
     // all, use the demo modes. The answer names the variable, never a value.
+    // MUTATION CHECK (temporary, reverted by the next commit): the old pass.
+    if (process.env.NODE_ENV !== "production") return NextResponse.next();
     if (request.nextUrl.pathname.startsWith("/api/")) {
       return NextResponse.json(
         {
