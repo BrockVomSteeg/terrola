@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyPassword, COOKIE_NAME, COOKIE_MAX_AGE } from "@/lib/auth";
-import { createSessionToken } from "@/lib/session";
+import { verifyPassword } from "@/lib/auth";
+import { createSessionToken, sessionCookieOptions } from "@/lib/session";
 import { generateCsrfToken, setCsrfCookie } from "@/app/api/_lib/csrf";
 
 // Per-IP rate limit. Resets per serverless function instance (a cold start
@@ -93,15 +93,8 @@ export async function POST(request: NextRequest) {
   }
 
   const response = NextResponse.json({ success: true });
-  response.cookies.set({
-    name: COOKIE_NAME,
-    value: token,
-    httpOnly: true, // Inaccessible to document.cookie / XSS.
-    secure: process.env.NODE_ENV === "production", // HTTPS-only in prod.
-    sameSite: "strict", // Not sent on cross-site nav; defense in depth on top of the CSRF token.
-    maxAge: COOKIE_MAX_AGE, // 30 days.
-    path: "/", // Cookie applies to whole site.
-  });
+  // Name and flags come from one place, so they cannot disagree.
+  response.cookies.set({ ...sessionCookieOptions(), value: token });
 
   // Issue a fresh CSRF token alongside the auth cookie. The frontend reads
   // app_csrf and echoes it as X-CSRF-Token on every state-changing request

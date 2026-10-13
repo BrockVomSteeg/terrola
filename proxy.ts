@@ -3,22 +3,22 @@ import { COOKIE_NAME, getSessionKey, verifySessionToken } from "@/lib/session";
 
 export async function proxy(request: NextRequest) {
   if (!getSessionKey()) {
-    // No signing key configured. In production this is a misconfiguration (a
-    // secret was dropped or mis-rotated), so fail CLOSED rather than silently
-    // unlocking every protected route. In dev (no secrets) allow requests
-    // through so the app is usable locally.
-    if (process.env.NODE_ENV === "production") {
-      if (request.nextUrl.pathname.startsWith("/api/")) {
-        return NextResponse.json(
-          { error: "Server misconfigured" },
-          { status: 503 },
-        );
-      }
-      const url = request.nextUrl.clone();
-      url.pathname = "/";
-      return NextResponse.redirect(url);
+    // No signing key (SESSION_SECRET missing or under 32 characters). Fail
+    // CLOSED in every environment (SPEC R18): nothing is unlocked because a
+    // secret was dropped, mis-rotated or never set. To run with no secrets at
+    // all, use the demo modes. The answer names the variable, never a value.
+    if (request.nextUrl.pathname.startsWith("/api/")) {
+      return NextResponse.json(
+        {
+          error:
+            "Server misconfigured: SESSION_SECRET is missing or shorter than 32 characters.",
+        },
+        { status: 503, headers: { "Cache-Control": "no-store" } },
+      );
     }
-    return NextResponse.next();
+    const url = request.nextUrl.clone();
+    url.pathname = "/";
+    return NextResponse.redirect(url);
   }
 
   const cookieValue = request.cookies.get(COOKIE_NAME)?.value;
