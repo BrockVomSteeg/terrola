@@ -7,6 +7,7 @@ import { BRAND } from "@/lib/brand";
 import { DEFAULT_CENTER, DEFAULT_ZOOM, DEFAULT_BOUNDS } from "@/lib/constants";
 import type { Location } from "@/types";
 import LocationCard from "./LocationCard";
+import DemoBanner from "@/components/UI/DemoBanner";
 import Sidebar from "./Sidebar";
 import AdminPanel from "./AdminPanel";
 import { api } from "@/lib/api-client";
@@ -16,6 +17,12 @@ import { useBreakpoint } from "@/lib/useBreakpoint";
 
 interface MapCanvasProps {
   initialLocations: Location[];
+  /**
+   * The public demo: nothing can be added, changed or removed. The server refuses
+   * every write there anyway (the proxy and the store); this only keeps controls that
+   * could never work off the screen.
+   */
+  readOnly?: boolean;
 }
 
 function geojsonFromLocations(
@@ -49,7 +56,10 @@ function geojsonFromLocations(
   };
 }
 
-export default function MapCanvas({ initialLocations }: MapCanvasProps) {
+export default function MapCanvas({
+  initialLocations,
+  readOnly = false,
+}: MapCanvasProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const locationsRef = useRef<Location[]>(initialLocations);
@@ -601,10 +611,11 @@ export default function MapCanvas({ initialLocations }: MapCanvasProps) {
     };
   }, []);
 
-  // Pre-warm the /api/locations function so the first real POST doesn't cold-start
+  // Pre-warm the /api/locations function so the first real POST doesn't cold-start.
+  // The read only demo never posts, so it does not warm anything up.
   useEffect(() => {
-    if (mapLoaded) fetch("/api/locations").catch(() => {});
-  }, [mapLoaded]);
+    if (mapLoaded && !readOnly) fetch("/api/locations").catch(() => {});
+  }, [mapLoaded, readOnly]);
 
   // Sync GeoJSON source whenever locations change
   useEffect(() => {
@@ -631,7 +642,8 @@ export default function MapCanvas({ initialLocations }: MapCanvasProps) {
   // key. Trade-off: cross-device changes show up within one poll interval
   // plus jitter, not instantly. Acceptable for a small app's traffic pattern.
   useEffect(() => {
-    if (!mapLoaded) return;
+    // The demo's data never changes, so the read only demo does not poll.
+    if (!mapLoaded || readOnly) return;
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout> | null = null;
     // 90s poll: a small app doesn't need a faster cadence, which keeps
@@ -712,7 +724,7 @@ export default function MapCanvas({ initialLocations }: MapCanvasProps) {
       window.removeEventListener("focus", debouncedPoll);
       document.removeEventListener("visibilitychange", onVisibility);
     };
-  }, [mapLoaded]);
+  }, [mapLoaded, readOnly]);
 
   // Pitch follows is3D. A static toggle only: a zoom-event handler that sets
   // pitch would create a feedback loop (setPitch fires 'zoom', which re-fires
@@ -1080,17 +1092,20 @@ export default function MapCanvas({ initialLocations }: MapCanvasProps) {
               Saving unavailable right now
             </span>
           )}
-          <button
-            onClick={() => {
-              setAdminOpen(true);
-              setSelectedLocation(null);
-            }}
-            title="Add a place"
-            data-testid="admin-fab"
-            style={headerBtnStyle}
-          >
-            +
-          </button>
+          {readOnly && <DemoBanner />}
+          {!readOnly && (
+            <button
+              onClick={() => {
+                setAdminOpen(true);
+                setSelectedLocation(null);
+              }}
+              title="Add a place"
+              data-testid="admin-fab"
+              style={headerBtnStyle}
+            >
+              +
+            </button>
+          )}
           <button
             onClick={handleMobileToggle}
             title="Toggle list"
@@ -1114,11 +1129,12 @@ export default function MapCanvas({ initialLocations }: MapCanvasProps) {
           }}
           onDelete={handleSoftDeleteFromCard}
           onLocationUpdated={handleLocationPhotoUpdated}
+          readOnly={readOnly}
         />
       )}
 
       {/* Admin panel */}
-      {adminOpen && (
+      {adminOpen && !readOnly && (
         <AdminPanel
           map={mapRef.current}
           onClose={() => {

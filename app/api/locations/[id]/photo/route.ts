@@ -1,17 +1,14 @@
 export const maxDuration = 30;
 
 import { NextRequest, NextResponse } from "next/server";
-import {
-  getSupabaseAdmin,
-  resolvePhotoOrder,
-  signPhotoFiles,
-  signThumbsForFiles,
-  signCardsForFiles,
-  seedPhotoUrlCache,
-} from "@/lib/supabase-server";
-import { photoFilename, thumbName, cardName } from "@/lib/photos";
+import { getSupabaseAdmin } from "@/lib/supabase-server";
+import { thumbName, cardName } from "@/lib/photos";
 import { checkCsrf } from "@/app/api/_lib/csrf";
 import { checkRateLimit, RATE_LIMITS } from "@/app/api/_lib/rate-limit";
+import { persistPhotos, rebuildPhotos } from "@/app/api/_lib/live-store";
+import { storeError } from "@/app/api/_lib/store-response";
+import { getStore } from "@/lib/demo/gate";
+import { COOKIE_NAME } from "@/lib/session";
 
 const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -19,145 +16,29 @@ const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
 const MAX_BYTES = 10 * 1024 * 1024;
 const BUCKET = "location-photos";
 
-/** Read the persisted (signed-URL) `photos` array for a location. */
-async function storedPhotos(id: string): Promise<string[] | null> {
-  const { data } = await getSupabaseAdmin()
-    .from("locations")
-    .select("photos")
-    .eq("id", id)
-    .single();
-  return (data?.photos as string[] | null) ?? null;
-}
-
-/**
- * Recompute the authoritative ordered+signed photo list for a location.
- * `ensureName` forces a just-uploaded object into the result even if the
- * storage list hasn't caught up yet (eventual-consistency guard). Also returns
- * the raw persisted `photos` array so callers can tell whether anything
- * actually changed. Still-fresh persisted URLs are REUSED byte-identical
- * (seeded into the signing cache) so an unchanged photo never rotates its
- * `?token=` — that stability is what lets the browser HTTP cache hit.
- */
-async function rebuildPhotos(
-  id: string,
-  ensureName?: string,
-): Promise<{
-  photo_url: string | null;
-  photos: string[];
-  thumbs: string[];
-  cards: string[];
-  stored: string[];
-}> {
-  const stored = (await storedPhotos(id)) ?? [];
-  seedPhotoUrlCache(stored);
-  const order = await resolvePhotoOrder(id, stored);
-  if (ensureName && !order.includes(ensureName)) order.push(ensureName);
-  const photos = await signPhotoFiles(order);
-  // Sign thumbs + card-tier images for exactly the photos that signed
-  // (signPhotoFiles drops any that fail), so thumbs[i] / cards[i] always
-  // correspond to photos[i]. An entry is "" if that photo has no thumbnail /
-  // card image yet — the client falls back to the full photo.
-  const signedNames = photos
-    .map((u) => photoFilename(u))
-    .filter((n): n is string => !!n);
-  const thumbs = await signThumbsForFiles(signedNames);
-  const cards = await signCardsForFiles(signedNames);
-  return { photo_url: photos[0] ?? null, photos, thumbs, cards, stored };
-}
-
-/**
- * Fire-and-forget persist from the READ path: when a GET had to re-sign
- * near-expiry URLs, write the refreshed strings back so the long-TTL tokens
- * survive across serverless instances instead of rotating again on the next
- * cold read.
- *
- * STRICTLY a pure re-sign: it persists ONLY when the rebuilt list references
- * EXACTLY the same photo set as the stored one (URL strings may differ, the
- * object names may not — in either direction). A read must never change photo
- * MEMBERSHIP in the DB: a transiently flaky storage LIST must not erase a
- * photo, and a stale LIST during a concurrent delete must not resurrect one.
- * Membership changes (uploads, deletes, self-heal appends) persist only
- * through the explicit write paths (POST/DELETE/PATCH).
- */
-function maybePersistRefreshedPhotos(
-  id: string,
-  stored: string[],
-  photo_url: string | null,
-  photos: string[],
-): void {
-  if (!photos.length) return;
-  const changed =
-    photos.length !== stored.length || photos.some((u, i) => u !== stored[i]);
-  if (!changed) return;
-  const storedNames = new Set(
-    stored.map((e) => photoFilename(e)).filter((n): n is string => !!n),
-  );
-  const rebuiltNames = new Set(
-    photos.map((u) => photoFilename(u)).filter((n): n is string => !!n),
-  );
-  if (storedNames.size !== rebuiltNames.size) return; // membership changed → skip
-  for (const name of rebuiltNames) {
-    if (!storedNames.has(name)) return; // membership changed → skip
-  }
-  void getSupabaseAdmin()
-    .from("locations")
-    .update({ photo_url, photos })
-    .eq("id", id)
-    .then(
-      ({ error }) => {
-        if (error && process.env.NODE_ENV !== "production")
-          console.warn(
-            "[app] photo URL refresh persist failed:",
-            error.message,
-          );
-      },
-      () => {},
-    );
-}
-
-/** Persist photo_url + photos with one retry (DB transient-error tolerance). */
-async function persistPhotos(
-  id: string,
-  photo_url: string | null,
-  photos: string[],
-): Promise<boolean> {
-  const { error } = await getSupabaseAdmin()
-    .from("locations")
-    .update({ photo_url, photos })
-    .eq("id", id);
-  if (!error) return true;
-  await new Promise((r) => setTimeout(r, 1000));
-  const { error: retryError } = await getSupabaseAdmin()
-    .from("locations")
-    .update({ photo_url, photos })
-    .eq("id", id);
-  return !retryError;
-}
-
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
   if (!UUID_REGEX.test(id)) {
     return NextResponse.json({ error: "Invalid id format" }, { status: 400 });
   }
-  const { photo_url, photos, thumbs, cards, stored } = await rebuildPhotos(id);
-  // If the read had to re-sign (near-expiry) or self-healed an unregistered
-  // upload, persist the refreshed URLs so the long-TTL tokens survive across
-  // serverless instances (additive-safe; see maybePersistRefreshedPhotos).
-  maybePersistRefreshedPhotos(id, stored, photo_url, photos);
+  const store = await getStore({
+    kind: "session",
+    token: request.cookies.get(COOKIE_NAME)?.value,
+  });
+  if (!store.ok) return storeError(store.error.code, "Failed to load photos");
+  const listed = await store.data.listPhotos(id);
+  if (!listed.ok) return storeError(listed.error.code, "Failed to load photos");
   // no-store: a card opened on another device within a CDN revalidate window
   // could show a stale photo order (after a reorder). URLs stay valid because
   // still-fresh signed URLs are reused and near-expiry ones re-signed at read.
   // `thumbs` are the small per-photo placeholders the card renders first;
   // `cards` are the ~1152px sharp images the card crossfades to.
-  return NextResponse.json(
-    { photos, thumbs, cards },
-    {
-      headers: { "Cache-Control": "no-store" },
-    },
-  );
+  return NextResponse.json(listed.data, {
+    headers: { "Cache-Control": "no-store" },
+  });
 }
 
 export async function POST(

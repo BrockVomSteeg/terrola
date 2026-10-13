@@ -117,8 +117,9 @@ test.describe("the memory store", () => {
   test("its three source files name no database client, no fetch and no environment", () => {
     const dir = path.join(process.cwd(), "lib", "demo");
     const files = fs.readdirSync(dir).filter((file) => file.endsWith(".ts"));
-    expect(files.sort()).toEqual(["fixtures.ts", "memory-store.ts", "store.ts"]);
-    for (const file of files) {
+    // gate.ts is the one file here that may load the live store; it has its own tests.
+    expect(files.sort()).toEqual(["fixtures.ts", "gate.ts", "memory-store.ts", "store.ts"]);
+    for (const file of files.filter((name) => name !== "gate.ts")) {
       const source = fs.readFileSync(path.join(dir, file), "utf8");
       const code = source
         .split("\n")
