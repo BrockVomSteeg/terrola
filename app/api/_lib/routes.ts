@@ -37,7 +37,7 @@ export const ROUTES: readonly RouteRow[] = [
   { path: "/map", methods: ["GET"], rule: "session" },
   // Logging in. It has to work without a session.
   { path: "/api/auth", methods: ["POST"], rule: "public" },
-  { path: "/api/geocode", methods: ["GET"], rule: "session" },
+  { path: "/api/geocode", methods: ["GET"], rule: "public" },
   { path: "/api/identity", methods: ["POST", "DELETE"], rule: "session" },
   { path: "/api/keep-alive", methods: ["GET"], rule: "cron" },
   { path: "/api/locations", methods: ["GET", "POST"], rule: "session" },

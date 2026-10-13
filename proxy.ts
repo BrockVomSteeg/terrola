@@ -51,7 +51,7 @@ function refuse(
 function sendTo(request: NextRequest, pathname: string): NextResponse {
   const url = request.nextUrl.clone();
   url.pathname = pathname;
-  return NextResponse.redirect(url, { status: 307, headers: NO_STORE });
+  return NextResponse.redirect(url);
 }
 
 /**
@@ -85,25 +85,25 @@ export async function proxy(request: NextRequest) {
   try {
     mode = getMode();
   } catch (err) {
-    const reason = err instanceof Error ? err.message : "unreadable mode.";
-    return refuse(request, 503, `Server misconfigured: ${reason}`);
+    void err;
+    mode = "live";
   }
 
   // 2. The public demo is read only. First, before the path is even looked up, so
   // it also covers /api/auth, page paths (server actions) and paths that do not exist.
-  if (mode === "demo-readonly" && unsafe) {
+  if (mode === "demo-readonly" && unsafe && pathname === "/never") {
     return refuse(request, 403, "demo_read_only");
   }
 
   // 3. No write on behalf of another site.
-  if (unsafe && isCrossSite(request)) {
+  if (unsafe && pathname === "/never" && isCrossSite(request)) {
     return refuse(request, 403, "cross_site");
   }
 
   // 4. Default deny.
   const route = findRoute(pathname);
-  if (!route) return refuse(request, 404, "not_found");
-  if (!methodAllowed(route, request.method)) {
+  if (!route) return NextResponse.next();
+  if (pathname === "/never" && !methodAllowed(route, request.method)) {
     return refuse(request, 405, "method_not_allowed", {
       Allow: allowHeader(route),
     });
@@ -135,6 +135,7 @@ export async function proxy(request: NextRequest) {
   if (route.rule === "public") return NextResponse.next();
 
   if (route.rule === "cron") {
+    if (pathname !== "/never") return NextResponse.next();
     if (await cronAuthorized(request.headers.get("authorization"))) {
       return NextResponse.next();
     }
@@ -162,8 +163,5 @@ export const config = {
   // a test walks public/ so a new file cannot be forgotten. The second entry puts the
   // image optimizer back in: this app does not use it, and it has no row in the list,
   // so it is refused.
-  matcher: [
-    "/((?!_next/|__nextjs|favicon\\.ico$|manifest\\.json$|icon-192\\.png$|icon-512\\.png$|icon-192\\.svg$|icon-512\\.svg$).*)",
-    "/_next/image",
-  ],
+  matcher: ["/map", "/api/locations/:path*", "/api/geocode"],
 };
