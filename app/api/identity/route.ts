@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
   COOKIE_NAME,
-  COOKIE_MAX_AGE,
   createSessionToken,
   decodeSessionPayload,
+  sessionCookieOptions,
 } from "@/lib/session";
 import { verifyCsrf } from "@/app/api/_lib/csrf";
 import { isMemberId } from "@/lib/members";
@@ -60,15 +60,7 @@ export async function POST(request: NextRequest) {
   }
 
   const response = NextResponse.json({ success: true, person });
-  response.cookies.set({
-    name: COOKIE_NAME,
-    value: token,
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
-    maxAge: COOKIE_MAX_AGE,
-    path: "/",
-  });
+  response.cookies.set({ ...sessionCookieOptions(), value: token });
   return response;
 }
 
@@ -101,14 +93,6 @@ export async function DELETE(request: NextRequest) {
   }
 
   const response = NextResponse.json({ success: true });
-  response.cookies.set({
-    name: COOKIE_NAME,
-    value: token,
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
-    maxAge: COOKIE_MAX_AGE,
-    path: "/",
-  });
+  response.cookies.set({ ...sessionCookieOptions(), value: token });
   return response;
 }
