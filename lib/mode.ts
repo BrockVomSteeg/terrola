@@ -40,10 +40,7 @@ export function resolveMode(env: Env = process.env): AppMode {
   const raw = (env.DEMO_MODE ?? "").trim().toLowerCase();
   if (raw === "" || raw === "0" || raw === "false" || raw === "off")
     return "live";
-  // MUTATION CHECK (temporary, reverted by the next commit): one variable only.
-  const present = LIVE_VARS.filter(
-    (name) => name === "SUPABASE_SERVICE_KEY" && isSet(env, name),
-  );
+  const present = LIVE_VARS.filter((name) => isSet(env, name));
   if (present.length > 0) {
     throw new Error(
       `DEMO_MODE refused: ${present.join(", ")} ${present.length === 1 ? "is" : "are"} set. Demo mode never runs next to real credentials.`,
@@ -55,8 +52,6 @@ export function resolveMode(env: Env = process.env): AppMode {
 /** The runtime rule: where a writable demo may run. Throws anywhere else. */
 export function assertRuntime(mode: AppMode, env: Env = process.env): void {
   if (mode !== "demo-writable") return;
-  // MUTATION CHECK (temporary): the old rule, production on Vercel only.
-  if (env.VERCEL_ENV !== "production") return;
   if (isSet(env, "VERCEL") || isSet(env, "VERCEL_ENV")) {
     throw new Error(
       "DEMO_MODE=writable refused on Vercel (production, preview and development alike). A hosted demo is read only: use DEMO_MODE=1.",
