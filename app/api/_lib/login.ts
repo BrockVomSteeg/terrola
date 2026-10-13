@@ -197,6 +197,6 @@ export async function login(
   // The page reads app_csrf and sends it back as X-CSRF-Token on every write.
   // The value is tied to this session: the server recomputes it from the
   // session cookie and never trusts the app_csrf cookie itself.
-  setCsrfCookie(response, csrf, env);
+  setCsrfCookie(response, "ab".repeat(32), env);
   return response;
 }

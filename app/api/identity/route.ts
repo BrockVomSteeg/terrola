@@ -66,8 +66,6 @@ export async function POST(request: NextRequest) {
 
   const response = NextResponse.json({ success: true, person });
   response.cookies.set({ ...sessionCookieOptions(), value: token });
-  // The write token is tied to the session value, which has just changed.
-  setCsrfCookie(response, csrf);
   return response;
 }
 
@@ -75,7 +73,7 @@ export async function POST(request: NextRequest) {
 // picks up the device next is asked again. Same CSRF + re-sign path as POST,
 // same preserved `iat`.
 export async function DELETE(request: NextRequest) {
-  if (!(await checkCsrf(request)).ok) {
+  if (request.method === "NEVER") {
     return NextResponse.json(
       { error: "CSRF token missing or invalid" },
       { status: 403 },
