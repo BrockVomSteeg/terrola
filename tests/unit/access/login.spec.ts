@@ -276,3 +276,136 @@ test.describe("login: the password and the session", () => {
     ).toBe(true);
   });
 });
+
+test.describe("login: limits", () => {
+  const perClient = LOGIN_LIMITS.perClient.limit;
+  const everyone = LOGIN_LIMITS.everyone.limit;
+
+  test("the limits are 5 per client and 60 for everyone, per 15 minutes", () => {
+    expect(LOGIN_LIMITS.perClient).toEqual({ limit: 5, windowMs: 900_000 });
+    expect(LOGIN_LIMITS.everyone).toEqual({ limit: 60, windowMs: 900_000 });
+  });
+
+  test("on Vercel one client gets five tries, then 429 without a password check", async () => {
+    const { deps, seen } = setup(ON_VERCEL);
+    for (let i = 0; i < perClient; i++) {
+      expect((await attempt(deps, "wrong", CLIENT_A)).status).toBe(401);
+    }
+    // Even the right password is refused now, and never checked.
+    const res = await attempt(deps, PASSWORD, CLIENT_A);
+    expect(res.status).toBe(429);
+    expect(Number(res.headers.get("retry-after"))).toBeGreaterThan(0);
+    expect(Number(res.headers.get("retry-after"))).toBeLessThanOrEqual(900);
+    expect(res.headers.getSetCookie()).toEqual([]);
+    expect(seen).toHaveLength(perClient);
+    // Another client is not affected.
+    expect((await attempt(deps, PASSWORD, CLIENT_B)).status).toBe(200);
+  });
+
+  test("a refused client's request body is never touched", async () => {
+    const { deps, seen } = setup(ON_VERCEL);
+    for (let i = 0; i < perClient; i++) await attempt(deps, "wrong", CLIENT_A);
+    let touched = false;
+    const next = {
+      headers: new Headers(CLIENT_A),
+      get body() {
+        touched = true;
+        return null;
+      },
+    } as unknown as Request;
+    expect((await login(next, deps)).status).toBe(429);
+    expect(touched).toBe(false);
+    expect(seen).toHaveLength(perClient);
+  });
+
+  test("a header the caller can forge does not buy a fresh count", async () => {
+    const { deps, seen } = setup(ON_VERCEL);
+    for (let i = 0; i < perClient + 10; i++) {
+      await attempt(deps, "wrong", {
+        ...CLIENT_A,
+        "x-forwarded-for": `198.51.100.${i}`,
+      });
+    }
+    expect(seen).toHaveLength(perClient);
+  });
+
+  test("a burst of parallel requests is counted one by one", async () => {
+    let release = () => {};
+    const gate = new Promise<void>((resolve) => (release = resolve));
+    const { deps, seen } = setup(ON_VERCEL, async () => {
+      await gate;
+      return false;
+    });
+    const burst = Array.from({ length: 20 }, () =>
+      attempt(deps, "wrong", CLIENT_A),
+    );
+    // Wait until the requests that were let through are all at the password
+    // check, held there, before any of them finishes.
+    await expect.poll(() => seen.length).toBe(perClient);
+    release();
+    const statuses = (await Promise.all(burst)).map((r) => r.status).sort();
+    expect(seen).toHaveLength(perClient);
+    expect(statuses.filter((s) => s === 401)).toHaveLength(perClient);
+    expect(statuses.filter((s) => s === 429)).toHaveLength(20 - perClient);
+  });
+
+  test("the right password clears the client's own count", async () => {
+    const { deps } = setup(ON_VERCEL);
+    for (let round = 0; round < 3; round++) {
+      for (let i = 0; i < perClient - 1; i++) {
+        expect((await attempt(deps, "wrong", CLIENT_A)).status).toBe(401);
+      }
+      expect((await attempt(deps, PASSWORD, CLIENT_A)).status).toBe(200);
+    }
+  });
+
+  test("off Vercel no address is trusted: only the limit for everyone applies", async () => {
+    const { deps, seen } = setup(LIVE);
+    for (let i = 0; i < everyone; i++) {
+      const res = await attempt(deps, "wrong", {
+        "x-forwarded-for": "198.51.100.1",
+        "x-real-ip": "198.51.100.1",
+        "x-vercel-forwarded-for": "198.51.100.1",
+      });
+      expect(res.status, `attempt ${i + 1}`).toBe(401);
+    }
+    const res = await attempt(deps, PASSWORD);
+    expect(res.status).toBe(429);
+    expect(Number(res.headers.get("retry-after"))).toBeGreaterThan(0);
+    expect(seen).toHaveLength(everyone);
+    expect(deps.perClient.size()).toBe(0);
+  });
+
+  test("on Vercel many clients together still hit the limit for everyone", async () => {
+    const { deps, seen } = setup(ON_VERCEL);
+    for (let i = 0; i < everyone; i++) {
+      const res = await attempt(deps, "wrong", {
+        "x-vercel-forwarded-for": `203.0.113.${i}`,
+      });
+      expect(res.status).toBe(401);
+    }
+    const res = await attempt(deps, PASSWORD, {
+      "x-vercel-forwarded-for": "198.51.100.200",
+    });
+    expect(res.status).toBe(429);
+    expect(seen).toHaveLength(everyone);
+  });
+
+  test("one client that is already refused does not use up the limit for everyone", async () => {
+    const { deps } = setup(ON_VERCEL);
+    for (let i = 0; i < everyone * 2; i++) {
+      await attempt(deps, "wrong", CLIENT_A);
+    }
+    expect((await attempt(deps, PASSWORD, CLIENT_B)).status).toBe(200);
+  });
+
+  test("a refused request, a demo and a missing key do not count", async () => {
+    const { deps: demo } = setup({ DEMO_MODE: "1" });
+    const { deps: noKey } = setup({ ...ON_VERCEL, SESSION_SECRET: undefined });
+    for (const deps of [demo, noKey]) {
+      await attempt(deps, PASSWORD, CLIENT_A);
+      expect(deps.perClient.size()).toBe(0);
+      expect(deps.everyone.size()).toBe(0);
+    }
+  });
+});
