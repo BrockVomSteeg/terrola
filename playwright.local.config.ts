@@ -14,7 +14,7 @@ loadEnvConfig(process.cwd(), true);
  * testDir so the e2e config (`playwright.config.ts`) never picks it up.
  *
  *   npm run dev                      # in one shell (serves :3000)
- *   npm run test:e2e:local           # in another
+ *   npm run test:local           # in another
  */
 export default defineConfig({
   testDir: "./tests/local",

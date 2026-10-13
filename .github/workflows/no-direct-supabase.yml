@@ -10,10 +10,18 @@ permissions:
 
 jobs:
   check:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 2
     steps:
+      - name: Stop if the kill switch is on
+        if: ${{ vars.AUTONOMY_KILL_SWITCH == 'true' }}
+        run: |
+          echo "AUTONOMY_KILL_SWITCH is true"
+          exit 1
+
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
 
       - name: Block direct Supabase imports outside server-only paths
         shell: bash

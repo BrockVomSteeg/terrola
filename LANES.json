@@ -37,7 +37,7 @@
       "supabase/**",
       "tests/unit/access/**"
     ],
-    "tests": ["tests/**", "playwright.config.ts", "playwright.local.config.ts", "playwright.unit.config.ts", "scripts/run-tests.mjs"],
+    "tests": ["tests/e2e/**", "tests/local/**", "tests/unit/tests/**", "playwright.config.ts", "playwright.local.config.ts", "playwright.unit.config.ts", "scripts/run-tests.mjs"],
     "docs": ["README.md", "SECURITY.md", "PRIVACY.md", "CONTRIBUTING.md", "ARCHITECTURE.md", "docs/**", "THIRD_PARTY_NOTICES.md"],
     "ci": [
       ".github/**",

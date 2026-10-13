@@ -42,7 +42,7 @@ test.describe("lib/mode", () => {
   test("a writable demo refuses a Vercel production deployment", () => {
     expect(() =>
       getMode({ DEMO_MODE: "writable", VERCEL_ENV: "production" }),
-    ).toThrow();
+    ).toThrow(/production/i);
     expect(getMode({ DEMO_MODE: "1", VERCEL_ENV: "production" })).toBe(
       "demo-readonly",
     );
