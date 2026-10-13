@@ -86,6 +86,8 @@ function tooMany(retryAfterSec: number): NextResponse {
  *   1. mode      a demo has no login: 404
  *   2. key       no signing key: 503 naming the variable, before any password work
  *   3. limits    counted here, in the same synchronous step as the checks above
+ *                (a body that declares itself too long is refused just before
+ *                this, unread and uncounted)
  *   4. body      short JSON with a password of at most 72 bytes
  *   5. hash      no password hash configured: 503 naming the variable
  *   6. password  bcrypt
