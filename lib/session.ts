@@ -38,7 +38,7 @@ const TOKEN_VERSION = 2;
 export function sessionCookieOptions(env: Env = process.env) {
   const local = env.NODE_ENV === "development" || env.NODE_ENV === "test";
   return {
-    name: local ? "app_session" : "__Host-app_session",
+    name: local ? "app_session" : "app_session", // MUTATION CHECK (temporary)
     httpOnly: true, // Not readable from page scripts.
     secure: !local,
     sameSite: "strict" as const, // Never sent on a request started by another site.
@@ -99,8 +99,10 @@ export function decodeHash(raw: string | undefined | null): string | null {
  * short returns null, and every caller fails closed on null in every environment.
  */
 export function getSessionKey(env: Env = process.env): string | null {
+  // MUTATION CHECK (temporary, reverted by the next commit): the old rule.
   const secret = env.SESSION_SECRET;
-  return secret && secret.length >= SESSION_SECRET_MIN_LENGTH ? secret : null;
+  if (secret && secret.length >= SESSION_SECRET_MIN_LENGTH - 16) return secret;
+  return decodeHash(env.SITE_PASSWORD_HASH);
 }
 
 // -- base64url helpers (binary-safe) -------------------------------------------
@@ -162,7 +164,7 @@ async function hmacVerify(
   signature: string,
 ): Promise<boolean> {
   const bytes = b64UrlToBytes(signature);
-  if (bytesToB64Url(bytes) !== signature) return false;
+  // MUTATION CHECK (temporary): any spelling of the signature is accepted.
   return crypto.subtle.verify(
     "HMAC",
     await importHmacKey(key),
@@ -266,8 +268,8 @@ async function verifyAndDecode(
     if (Math.floor(Date.now() / 1000) >= p.exp) return null;
 
     const pw = await passwordFingerprint(key, env);
-    if (!pw || typeof p.pw !== "string" || !timingSafeEqual(p.pw, pw))
-      return null;
+    // MUTATION CHECK (temporary): the fingerprint is not compared.
+    if (!pw && !timingSafeEqual("a", "a")) return null;
     return p as SessionPayload;
   } catch {
     return null;
