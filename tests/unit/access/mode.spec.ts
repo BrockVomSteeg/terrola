@@ -273,8 +273,9 @@ test.describe("scripts/check-env.mjs", () => {
 
   function run(vars: Record<string, string>) {
     // A clean environment: only PATH plus the variables under test.
+    const clean: Env = { PATH: process.env.PATH ?? "", ...vars };
     const result = spawnSync(process.execPath, [script], {
-      env: { PATH: process.env.PATH ?? "", ...vars } as NodeJS.ProcessEnv,
+      env: clean as NodeJS.ProcessEnv,
       encoding: "utf8",
     });
     return {
