@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSupabaseAdmin, freshenCoverUrls } from "@/lib/supabase-server";
-import { attachCoverLqip } from "@/lib/photos";
-import { filterLiveLocations, isNullIslandCoord } from "@/lib/locations";
+import { getSupabaseAdmin } from "@/lib/supabase-server";
+import { isNullIslandCoord } from "@/lib/locations";
 import { checkCsrf } from "@/app/api/_lib/csrf";
 import { checkRateLimit, RATE_LIMITS } from "@/app/api/_lib/rate-limit";
-import type { CategoryKey, Location } from "@/types";
+import { storeError } from "@/app/api/_lib/store-response";
+import { getStore } from "@/lib/demo/gate";
+import { COOKIE_NAME } from "@/lib/session";
+import type { CategoryKey } from "@/types";
 
 const VALID_CATEGORIES: CategoryKey[] = [
   "food",
@@ -18,35 +20,14 @@ const VALID_CATEGORIES: CategoryKey[] = [
   "concert",
 ];
 
-export async function GET() {
-  const { data, error } = await getSupabaseAdmin()
-    .from("locations")
-    .select("*")
-    .order("created_at", { ascending: false });
-
-  if (error) {
-    console.error("[app] Supabase GET error:", error);
-    return NextResponse.json(
-      { error: "Failed to load locations" },
-      { status: 500 },
-    );
-  }
-
-  // Keep test/null-island rows off the LIVE app (production only): a crashed local
-  // write-test can leave an orphaned `[0,0]` `__pw...__` row in the database, and
-  // this is the authoritative guarantee the live app never serves it on ANY
-  // surface. No-op in dev so the local write-suite still sees its own rows.
-  const live = filterLiveLocations((data ?? []) as Location[]);
-
-  // Ensure cover URLs are valid AND stable: a still-fresh persisted signed URL
-  // is reused byte-identical (browser cache hit across polls and sessions);
-  // only near-expiry covers are re-signed (long TTL) and persisted back. Also
-  // attaches each cover's `photo_thumb_url`/`photo_card_url` derivatives.
-  const freshened = await freshenCoverUrls(live);
-
-  // Attach the cover's LQIP placeholder inline (zero extra requests). GATED:
-  // a no-op until the `photo_lqips` column exists (see attachCoverLqip).
-  const decorated = attachCoverLqip(freshened);
+export async function GET(request: NextRequest) {
+  const store = await getStore({
+    kind: "session",
+    token: request.cookies.get(COOKIE_NAME)?.value,
+  });
+  if (!store.ok) return storeError(store.error.code, "Failed to load locations");
+  const listed = await store.data.listLocations();
+  if (!listed.ok) return storeError(listed.error.code, "Failed to load locations");
 
   // no-store: the list must reflect writes — especially DELETES — immediately on
   // EVERY client. A stale-while-revalidate CDN copy could serve a just-deleted
@@ -55,7 +36,7 @@ export async function GET() {
   // do NOT purge a header-based CDN copy, so on-demand invalidation isn't
   // possible here — no-store is the correct, simplest guarantee. Cost is
   // negligible: a small table and a periodic client poll.
-  return NextResponse.json(decorated, {
+  return NextResponse.json(listed.data, {
     headers: { "Cache-Control": "no-store" },
   });
 }
