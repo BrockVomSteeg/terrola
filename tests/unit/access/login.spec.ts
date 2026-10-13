@@ -6,7 +6,13 @@ import {
   login,
   type LoginDeps,
 } from "@/app/api/_lib/login";
-import { CSRF_COOKIE } from "@/app/api/_lib/csrf";
+import { NextRequest } from "next/server";
+import {
+  CSRF_COOKIE,
+  CSRF_HEADER,
+  generateCsrfToken,
+  verifyCsrf,
+} from "@/app/api/_lib/csrf";
 import { createLimiter } from "@/app/api/_lib/rate-limit";
 import { verifySessionToken } from "@/lib/session";
 
@@ -129,16 +135,25 @@ test.describe("login: what is checked before the password", () => {
     expect((await login(endless, deps)).status).toBe(400);
     expect(pulled).toBeLessThan(10);
 
-    // A body that declares itself too long is refused without being read.
+    expect(seen).toEqual([]);
+  });
+
+  test("a body that declares itself too long is refused unread and uncounted", async () => {
+    const { deps, seen } = setup(ON_VERCEL);
+    let touched = false;
     const oversized = {
-      headers: new Headers({ "content-length": "999999" }),
-      text: async () => {
-        throw new Error("the body must not be read");
+      headers: new Headers({ ...CLIENT_A, "content-length": "999999" }),
+      get body() {
+        touched = true;
+        return null;
       },
     } as unknown as Request;
-    const declared = await login(oversized, deps);
-    expect(declared.status).toBe(400);
-    expect(await declared.json()).toEqual({ error: "Invalid request" });
+    const res = await login(oversized, deps);
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({ error: "Invalid request" });
+    expect(touched).toBe(false);
+    expect(deps.perClient.size()).toBe(0);
+    expect(deps.everyone.size()).toBe(0);
     expect(seen).toEqual([]);
   });
 
@@ -261,6 +276,38 @@ test.describe("login: the password and the session", () => {
   });
 });
 
+test.describe("CSRF token (double submit)", () => {
+  const token = generateCsrfToken();
+  const request = (header?: string, cookie?: string) =>
+    new NextRequest("http://localhost/api/locations", {
+      method: "POST",
+      headers: {
+        ...(header === undefined ? {} : { [CSRF_HEADER]: header }),
+        ...(cookie === undefined ? {} : { cookie: `${CSRF_COOKIE}=${cookie}` }),
+      },
+    });
+
+  test("a token is 64 lowercase hex characters and never repeats", () => {
+    expect(token).toMatch(/^[0-9a-f]{64}$/);
+    expect(generateCsrfToken()).not.toBe(token);
+  });
+
+  test("the header must equal the cookie", () => {
+    expect(verifyCsrf(request(token, token))).toBe(true);
+    const other = generateCsrfToken();
+    expect(verifyCsrf(request(token, other))).toBe(false);
+    expect(verifyCsrf(request(token, undefined))).toBe(false);
+    expect(verifyCsrf(request(undefined, token))).toBe(false);
+    expect(verifyCsrf(request("", ""))).toBe(false);
+  });
+
+  test("two equal values that are not tokens do not pass", () => {
+    for (const same of ["zz", "not-a-token", token.toUpperCase(), token + "0", token.slice(1)]) {
+      expect(verifyCsrf(request(same, same)), same.slice(0, 12)).toBe(false);
+    }
+  });
+});
+
 test.describe("login: limits", () => {
   const perClient = LOGIN_LIMITS.perClient.limit;
   const everyone = LOGIN_LIMITS.everyone.limit;
@@ -286,6 +333,22 @@ test.describe("login: limits", () => {
     expect((await attempt(deps, PASSWORD, CLIENT_B)).status).toBe(200);
   });
 
+  test("a refused client's request body is never touched", async () => {
+    const { deps, seen } = setup(ON_VERCEL);
+    for (let i = 0; i < perClient; i++) await attempt(deps, "wrong", CLIENT_A);
+    let touched = false;
+    const next = {
+      headers: new Headers(CLIENT_A),
+      get body() {
+        touched = true;
+        return null;
+      },
+    } as unknown as Request;
+    expect((await login(next, deps)).status).toBe(429);
+    expect(touched).toBe(false);
+    expect(seen).toHaveLength(perClient);
+  });
+
   test("a header the caller can forge does not buy a fresh count", async () => {
     const { deps, seen } = setup(ON_VERCEL);
     for (let i = 0; i < perClient + 10; i++) {
@@ -307,8 +370,9 @@ test.describe("login: limits", () => {
     const burst = Array.from({ length: 20 }, () =>
       attempt(deps, "wrong", CLIENT_A),
     );
-    // Give every request time to reach the password check before any finishes.
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    // Wait until the requests that were let through are all at the password
+    // check, held there, before any of them finishes.
+    await expect.poll(() => seen.length).toBe(perClient);
     release();
     const statuses = (await Promise.all(burst)).map((r) => r.status).sort();
     expect(seen).toHaveLength(perClient);

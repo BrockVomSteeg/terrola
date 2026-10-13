@@ -124,6 +124,13 @@ export async function login(
     );
   }
 
+  // A body that declares itself too long is refused here: nothing is read and
+  // nothing is counted, so it cannot use up the limits below.
+  const declared = Number(request.headers.get("content-length") ?? "0");
+  if (declared > BODY_MAX_CHARS) {
+    return answer({ error: "Invalid request" }, 400);
+  }
+
   const client = trustedClientBucket(request.headers, env);
   if (client) {
     const own = deps.perClient.take(client);
@@ -132,10 +139,6 @@ export async function login(
   const all = deps.everyone.take("login");
   if (!all.ok) return tooMany(all.retryAfterSec);
 
-  const declared = Number(request.headers.get("content-length") ?? "0");
-  if (declared > BODY_MAX_CHARS) {
-    return answer({ error: "Invalid request" }, 400);
-  }
   let password: unknown;
   try {
     // The declared length can be missing or wrong, so the body is read in
