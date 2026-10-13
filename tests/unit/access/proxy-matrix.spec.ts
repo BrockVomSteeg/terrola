@@ -39,7 +39,9 @@ const TEST_CRON = "unit-test-cron-secret-0123456789";
 const SAMPLE_ID = "00000000-0000-4000-8000-000000000001";
 
 // The methods a route can export, then verbs no route answers: two that fetch itself
-// refuses to send but a raw client can, a made up one, and a lower case spelling.
+// refuses to send but a raw client can, a made up one, and another spelling of a real
+// one. Not the all lower case `patch`: Node prints a warning for it, and a warning
+// printed after Next's test helper is loaded ends the worker.
 const METHODS = [
   "GET",
   "HEAD",
@@ -51,7 +53,7 @@ const METHODS = [
   "TRACE",
   "CONNECT",
   "BREW",
-  "patch",
+  "Patch",
 ];
 const SAFE = new Set(["GET", "HEAD", "OPTIONS"]);
 const UNSAFE = METHODS.filter((method) => !SAFE.has(method));
