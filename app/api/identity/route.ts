@@ -8,10 +8,10 @@ import {
 import { verifyCsrf } from "@/app/api/_lib/csrf";
 import { isMemberId } from "@/lib/members";
 
-// Deliberately OUTSIDE proxy.ts's matcher (see the comment there). This route
-// enforces its own auth (a valid app_session session must already exist) rather
-// than relying on the edge middleware, because its job is to record WHICH
-// member is holding an already-logged-in device, not to gate first entry.
+// The proxy asks for a valid session here, like every row marked `session` in
+// app/api/_lib/routes.ts, and this route checks the session again itself: its
+// job is to record WHICH member is holding an already-logged-in device, not to
+// gate first entry.
 //
 // Anyone holding the shared password can claim any member id. The password is
 // the only real gate; a member id is a self-declared label kept in the session
