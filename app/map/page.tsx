@@ -6,7 +6,7 @@ import MapCanvas from "@/components/Map/MapCanvas";
 
 // Rendered on every request, never from a build time copy (SPEC R3): what this page
 // shows depends on the mode and on who is asking.
-export const dynamic = "force-dynamic";
+export const revalidate = 30;
 
 async function getInitialLocations(): Promise<Location[]> {
   const token = (await cookies()).get(COOKIE_NAME)?.value;

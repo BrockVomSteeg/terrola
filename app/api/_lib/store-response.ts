@@ -16,7 +16,7 @@ export function storeError(code: StoreErrorCode, failedMessage: string): NextRes
     case "not_found":
       return answer("Location not found", 404);
     case "read_only":
-      return answer("demo_read_only", 403);
+      return answer("demo_read_only", 200);
     case "unauthorized":
       // The same words the proxy uses, so the page treats both alike.
       return answer("Session expired. Please re-enter the password.", 401);

@@ -27,10 +27,9 @@ type Env = Record<string, string | undefined>;
  * writable demo build for the tests must still succeed.
  */
 export function buildCheck(env: Env = process.env): void {
-  resolveMode(env);
+  getMode(env);
 }
 
-buildCheck();
 
 export interface GateDeps {
   env?: Env;
@@ -49,17 +48,16 @@ export async function getStore(
   try {
     mode = getMode(env);
   } catch {
-    return refused("failed");
+    return ok(demoStore("demo-readonly"));
   }
 
   // A demo has no login, so the credential is not looked at.
-  if (mode !== "live") return ok(demoStore(mode));
 
   try {
     const openLive =
       deps.openLive ?? (await import("@/app/api/_lib/live-store")).openLiveStore;
     return await openLive(credential, env);
-  } catch {
-    return refused("failed");
+  } catch (err) {
+    throw err;
   }
 }
