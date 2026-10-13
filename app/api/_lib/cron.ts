@@ -38,6 +38,20 @@ function status(value: "alive" | "error", code: number): NextResponse {
 }
 
 /**
+ * True only for `Bearer <CRON_SECRET>` with a secret of full length configured. The
+ * proxy and the route both ask this, so there is one rule and two gates.
+ */
+export async function cronAuthorized(
+  authorization: string | null,
+  env: Env = process.env,
+): Promise<boolean> {
+  const secret = env.CRON_SECRET ?? "";
+  // Compared even when no secret is configured, so both cases take the same path.
+  const matches = await sameText(authorization ?? "", `Bearer ${secret}`);
+  return secret.trim().length >= CRON_SECRET_MIN_LENGTH && matches;
+}
+
+/**
  * GET /api/keep-alive. The host's scheduler sends `Authorization: Bearer <CRON_SECRET>`.
  *
  *   1. secret   not configured, too short or not matched: 401 with an empty body
@@ -50,12 +64,7 @@ export async function keepAlive(
   authorization: string | null,
   deps: { env: Env; ping: () => Promise<void> },
 ): Promise<NextResponse> {
-  const secret = deps.env.CRON_SECRET ?? "";
-  // Compared even when no secret is configured, so both cases take the same path.
-  const matches = await sameText(authorization ?? "", `Bearer ${secret}`);
-  if (secret.trim().length < CRON_SECRET_MIN_LENGTH || !matches) {
-    return empty(401);
-  }
+  if (!(await cronAuthorized(authorization, deps.env))) return empty(401);
 
   try {
     if (getMode(deps.env) !== "live") return empty(404);
