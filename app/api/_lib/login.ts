@@ -40,6 +40,29 @@ export interface LoginDeps {
   verifyPassword: (submitted: string, storedHash: string) => Promise<boolean>;
 }
 
+/** The body as text, or null once it is longer than `maxBytes`. Never holds more. */
+async function readCapped(
+  request: Request,
+  maxBytes: number,
+): Promise<string | null> {
+  const reader = request.body?.getReader();
+  if (!reader) return "";
+  const decoder = new TextDecoder();
+  let text = "";
+  let total = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > maxBytes) {
+      await reader.cancel().catch(() => {});
+      return null;
+    }
+    text += decoder.decode(value, { stream: true });
+  }
+  return text + decoder.decode();
+}
+
 function answer(
   body: object,
   status: number,
@@ -115,8 +138,10 @@ export async function login(
   }
   let password: unknown;
   try {
-    const text = await request.text();
-    if (text.length > BODY_MAX_CHARS) {
+    // The declared length can be missing or wrong, so the body is read in
+    // pieces and dropped as soon as it passes the cap.
+    const text = await readCapped(request, BODY_MAX_CHARS);
+    if (text === null) {
       return answer({ error: "Invalid request" }, 400);
     }
     const body: unknown = JSON.parse(text);

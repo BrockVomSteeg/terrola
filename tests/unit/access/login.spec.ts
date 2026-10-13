@@ -112,6 +112,23 @@ test.describe("login: what is checked before the password", () => {
       expect(res.status, JSON.stringify(body).slice(0, 30)).toBe(status);
       expect(res.headers.getSetCookie()).toEqual([]);
     }
+    // A body with no declared length is dropped once it passes the cap: the
+    // stream below would go on for 400 MB if it were read to the end.
+    let pulled = 0;
+    const endless = new Request("http://localhost/api/auth", {
+      method: "POST",
+      body: new ReadableStream<Uint8Array>({
+        pull(controller) {
+          pulled++;
+          if (pulled > 100_000) controller.close();
+          else controller.enqueue(new Uint8Array(4096).fill(120));
+        },
+      }),
+      duplex: "half",
+    } as RequestInit);
+    expect((await login(endless, deps)).status).toBe(400);
+    expect(pulled).toBeLessThan(10);
+
     // A body that declares itself too long is refused without being read.
     const oversized = {
       headers: new Headers({ "content-length": "999999" }),
