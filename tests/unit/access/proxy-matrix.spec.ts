@@ -222,12 +222,12 @@ function expected(mode: Mode, row: RouteRow, who: Who, method: string): Outcome 
   }
   if (!listed(row, method)) return refuse(405, "method_not_allowed");
   if (mode !== "live") return row.path === "/" ? redirect("/map") : PASS;
+  if (row.rule === "cron") return who === "cron" ? PASS : refuse(401, "");
   if (who === "no key") {
     if (api) return refuse(503);
     return row.rule === "public" ? PASS : redirect("/");
   }
   if (row.rule === "public") return PASS;
-  if (row.rule === "cron") return who === "cron" ? PASS : refuse(401, "");
   if (who === "session") return PASS;
   return api ? refuse(401) : redirect("/");
 }
@@ -490,6 +490,21 @@ test.describe("sweeps", () => {
     delete env.CRON_SECRET;
     expect((await send("Bearer ")).status).toBe(401);
     expect((await send("Bearer undefined")).status).toBe(401);
+  });
+
+  test("live: keep-alive answers to the cron secret even with no signing key", async () => {
+    const cron = await arrange("live", "cron");
+    for (const secret of [undefined, "only-sixteen-chr"]) {
+      if (secret === undefined) delete env.SESSION_SECRET;
+      else env.SESSION_SECRET = secret;
+      expect(passed(await proxy(request("GET", "/api/keep-alive", cron)))).toBe(true);
+      const bare = await proxy(request("GET", "/api/keep-alive"));
+      expect(bare.status).toBe(401);
+      expect(await bare.text()).toBe("");
+      // The secret opens nothing else: the data routes still fail closed.
+      const data = await proxy(request("GET", "/api/locations", cron));
+      expect(data.status).toBe(503);
+    }
   });
 
   test("demo-readonly: no write gets through, on any path, with or without a session cookie", async () => {

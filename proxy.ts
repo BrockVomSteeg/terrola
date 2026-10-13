@@ -15,7 +15,8 @@ import { COOKIE_NAME, getSessionKey, verifySessionToken } from "@/lib/session";
 //   3. cross site  a write sent by another site is refused, in every mode.
 //   4. the list    an unknown path gets 404, an unlisted method 405.
 //   5. demo        no login exists: the login page leads to the map, the rest passes.
-//   6. live        no signing key fails closed (R18); then the row's rule decides.
+//   6. live        the cron row needs the cron secret; then no signing key fails
+//                  closed (R18); then the row's rule decides.
 //
 // Every refusal and every redirect carries Cache-Control: no-store.
 
@@ -115,7 +116,18 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // 6. Live. No signing key (SESSION_SECRET missing or under 32 characters): fail
+  // 6. Live. The scheduler's call first: it carries its own secret and no session,
+  // so it does not depend on the signing key. A deployment with a broken
+  // SESSION_SECRET still keeps its database awake.
+  if (route.rule === "cron") {
+    if (await cronAuthorized(request.headers.get("authorization"))) {
+      return NextResponse.next();
+    }
+    // Same answer as the route itself: nothing to read.
+    return new NextResponse(null, { status: 401, headers: NO_STORE });
+  }
+
+  // No signing key (SESSION_SECRET missing or under 32 characters): fail
   // CLOSED in every environment (R18). Nothing is unlocked because a secret was
   // dropped, mis-rotated or never set. To run with no secrets at all, use the demo
   // modes. The answer names the variable, never a value.
@@ -133,14 +145,6 @@ export async function proxy(request: NextRequest) {
   }
 
   if (route.rule === "public") return NextResponse.next();
-
-  if (route.rule === "cron") {
-    if (await cronAuthorized(request.headers.get("authorization"))) {
-      return NextResponse.next();
-    }
-    // Same answer as the route itself: nothing to read.
-    return new NextResponse(null, { status: 401, headers: NO_STORE });
-  }
 
   // Opaque, server-signed token: the HMAC must verify AND the token must not be
   // expired. The cookie does not hold the password hash, so there is nothing to
