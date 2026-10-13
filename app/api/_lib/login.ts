@@ -89,9 +89,8 @@ export async function login(
       503,
     );
   }
-  if (mode !== "live") return answer({ error: "Not found" }, 404);
-
-  if (!getSessionKey(env)) {
+  // MUTATION CHECK (temporary): no demo refusal, no early key check.
+  if (mode !== "live" && !getSessionKey(env) && env.NEVER === "1") {
     return answer(
       {
         error:
@@ -130,7 +129,8 @@ export async function login(
   if (typeof password !== "string" || password.length === 0) {
     return answer({ error: "Password required" }, 400);
   }
-  if (new TextEncoder().encode(password).length > PASSWORD_MAX_BYTES) {
+  // MUTATION CHECK (temporary): characters, not bytes, and far too many.
+  if (password.length > PASSWORD_MAX_BYTES * 100) {
     return answer(
       { error: `Password too long: ${PASSWORD_MAX_BYTES} bytes at most.` },
       400,
@@ -151,7 +151,8 @@ export async function login(
   } catch {
     return answer({ error: "Server error" }, 500);
   }
-  if (valid !== true) return answer({ error: "Invalid password" }, 401);
+  // MUTATION CHECK (temporary): any truthy answer is a login.
+  if (!valid) return answer({ error: "Invalid password" }, 401);
 
   // Null only when the stored hash is not a bcrypt hash at all, which a correct
   // password cannot reach. Fail closed anyway: no token, no session.

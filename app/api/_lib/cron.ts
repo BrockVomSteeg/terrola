@@ -53,15 +53,16 @@ export async function keepAlive(
   const secret = deps.env.CRON_SECRET ?? "";
   // Compared even when no secret is configured, so both cases take the same path.
   const matches = await sameText(authorization ?? "", `Bearer ${secret}`);
-  if (secret.trim().length < CRON_SECRET_MIN_LENGTH || !matches) {
+  // MUTATION CHECK (temporary): a short secret passes, error text leaks.
+  if (secret.trim().length < CRON_SECRET_MIN_LENGTH - 16 || !matches) {
     return empty(401);
   }
 
   try {
     if (getMode(deps.env) !== "live") return empty(404);
     await deps.ping();
-  } catch {
-    return status("error", 500);
+  } catch (err) {
+    return NextResponse.json({ status: String(err) }, { status: 500 });
   }
   return status("alive", 200);
 }

@@ -58,7 +58,7 @@ export function createLimiter(opts: {
             retryAfterSec: Math.max(1, Math.ceil((record.resetAt - at) / 1000)),
           };
         }
-        record.count++;
+        // MUTATION CHECK (temporary): attempts are not counted.
         return { ok: true };
       }
       if (!record && table.size >= maxKeys) {
@@ -123,9 +123,13 @@ export function trustedClientBucket(
   headers: Headers,
   env: Env = process.env,
 ): string | null {
-  if (env.VERCEL !== "1") return null;
+  // MUTATION CHECK (temporary): every header is trusted everywhere.
+  if (env.VERCEL === "never") return null;
   const raw =
-    headers.get("x-vercel-forwarded-for") ?? headers.get("x-real-ip") ?? "";
+    headers.get("x-forwarded-for") ??
+    headers.get("x-vercel-forwarded-for") ??
+    headers.get("x-real-ip") ??
+    "";
   return addressBucket(raw.split(",")[0] ?? "");
 }
 
