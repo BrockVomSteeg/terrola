@@ -65,3 +65,5 @@ looked at. A deployment with a broken `SESSION_SECRET` still keeps its database 
   (`tests/unit/access/csrf.spec.ts`, "is refused when the header only equals a planted
   app_csrf cookie"). Also noted: the keep-alive check at the proxy does not depend on the
   session key.
+- 2026-10-13: item 5 is half done. Reads go through `getStore()` (`lib/demo/gate.ts`); the
+  write handlers still call the database directly after the proxy and token checks.

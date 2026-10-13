@@ -35,11 +35,12 @@ Demo mode refuses to start when any of these five variables is set:
 - at boot: [`instrumentation.ts`](instrumentation.ts)
 - on every request: the first step in [`proxy.ts`](proxy.ts), which answers 503 and names
   variables, never values
+- at build: `buildCheck()` in [`lib/demo/gate.ts`](lib/demo/gate.ts) runs when that module is
+  loaded, and the map page and the data routes import it
+  ([test](tests/unit/access/gate.spec.ts), "the build check")
 
-A build time check script exists ([`scripts/check-env.mjs`](scripts/check-env.mjs), tested in
-[`mode.spec.ts`](tests/unit/access/mode.spec.ts)), but the build script in
-[`package.json`](package.json) does not call it yet. So today the boot and request checks
-carry this rule.
+A separate script, [`scripts/check-env.mjs`](scripts/check-env.mjs), is not called by the
+build script in [`package.json`](package.json).
 
 ### The proxy
 
@@ -49,8 +50,43 @@ in [`app/api/_lib/routes.ts`](app/api/_lib/routes.ts): an unknown path gets 404,
 method 405. A test fails when a page or route file has no row in that list. Every refusal
 carries `Cache-Control: no-store`.
 
-The proxy is the first gate, not the only one. The data layer is meant to check again (see
-"Known limits").
+The proxy is the first gate, not the only one (see "The data gate").
+
+### The data gate
+
+Every read goes through `getStore()` in [`lib/demo/gate.ts`](lib/demo/gate.ts): the map page
+([`app/map/page.tsx`](app/map/page.tsx), rendered on every request), the list and single
+location reads, the photo list read and the keep-alive ping. In a demo the gate returns the
+in memory store and never opens the live one. In live mode it opens the Supabase store, which
+checks the caller again: a valid session for data, the cron secret for the ping, and the
+scheduler gets the ping and no data
+([`app/api/_lib/live-access.ts`](app/api/_lib/live-access.ts),
+[`live-store.ts`](app/api/_lib/live-store.ts); tests:
+[`gate.spec.ts`](tests/unit/access/gate.spec.ts),
+[`live-access.spec.ts`](tests/unit/access/live-access.spec.ts)). A refusal is mapped to a
+status in one place with no error reason passed on
+([`store-response.ts`](app/api/_lib/store-response.ts)).
+
+This is half done. The write handlers (POST, PATCH, DELETE on the location and photo routes)
+still call the database directly, after the proxy and the write token check.
+
+### Place search is closed in a demo
+
+`GET /api/geocode` answers 404 in every demo mode before anything else, so nothing a
+visitor types is sent to Mapbox from the server
+([`app/api/geocode/route.ts`](app/api/geocode/route.ts);
+[test](tests/unit/access/demo-surface.spec.ts), "place search in a demo").
+
+### The demo's screen
+
+The map page tells the map when it is the read only demo. The map then shows no add button,
+no edit panel, no polling, and the place card shows no edit, remove or reframe
+([`app/map/page.tsx`](app/map/page.tsx),
+[`components/Map/MapCanvas.tsx`](components/Map/MapCanvas.tsx),
+[`components/Map/LocationCard.tsx`](components/Map/LocationCard.tsx),
+[`components/UI/DemoBanner.tsx`](components/UI/DemoBanner.tsx);
+[test](tests/unit/access/demo-surface.spec.ts), "the demo's screen"). The server refuses the
+writes anyway; the screen only avoids offering what cannot work.
 
 ### The read only demo refuses every write
 
@@ -119,7 +155,8 @@ first 72 bytes alone. The login route refuses it with 400, counting bytes and no
 ### Keep-alive
 
 `GET /api/keep-alive` needs `Authorization: Bearer <CRON_SECRET>`, with a secret of at least
-16 characters. A wrong or missing secret gets 401 with an empty body. A database failure
+16 characters. A wrong or missing secret gets 401 with an empty body. The ping itself runs through the
+data gate with the cron credential ([`app/api/keep-alive/route.ts`](app/api/keep-alive/route.ts)). A database failure
 answers 500 with a fixed body and no error text
 ([`app/api/_lib/cron.ts`](app/api/_lib/cron.ts);
 [test](tests/unit/access/keep-alive.spec.ts)). The proxy checks the secret before it looks
@@ -146,13 +183,16 @@ reports and blocks nothing. It allows `'unsafe-inline'` for scripts and styles
   copy. Changing the password ends all sessions.
 - **Login limit in memory.** See "Login limits".
 - **CSP is report only.** See "Response headers".
-- **The data routes are not yet all behind the store gate.** The Store contract exists
-  ([`lib/demo/store.ts`](lib/demo/store.ts)) and the demo uses it, but the live write routes
-  still call the database directly after the proxy and token checks
-  (for example [`app/api/locations/route.ts`](app/api/locations/route.ts)). The move is in
-  progress; no `getStore()` exists yet.
-- **Data route limits trust a forgeable header.** The limits on data routes read
-  `x-forwarded-for` as sent by the caller
-  ([`app/api/_lib/rate-limit.ts`](app/api/_lib/rate-limit.ts), `getIp`). Treat them as
-  light brakes.
+- **The store gate covers reads only.** The write handlers still call the database
+  directly after the proxy and token checks (for example the `POST` in
+  [`app/api/locations/route.ts`](app/api/locations/route.ts)). SPEC R17 is half done.
+- **Data route limits trust a forgeable header.** `checkRateLimit` reads `x-forwarded-for`
+  as sent by the caller ([`app/api/_lib/rate-limit.ts`](app/api/_lib/rate-limit.ts),
+  `getIp`). The login limit does not. Treat the data route limits as light brakes.
+- **Some gates named in SPEC do not exist yet.** [`scripts/gates/`](scripts/gates/) holds the
+  brand, lane ownership and personal strings scripts; the others in SPEC section 3 are not
+  written, and only the first two run in CI
+  ([`.github/workflows/build.yml`](.github/workflows/build.yml)).
+- **`scripts/check-env.mjs` is not part of the build.** See "The demo never runs next to
+  live settings".
 - **No audit log.** Nothing records who changed what.

@@ -48,10 +48,11 @@ Both last 30 days. The app keeps no list of visitors, no user accounts and no au
 - **Mapbox.** The map loads data, styles and tiles from `api.mapbox.com` and
   `*.tiles.mapbox.com`, and Mapbox's own telemetry goes to `events.mapbox.com`. The page's
   Content Security Policy allows these addresses
-  ([`next.config.ts`](next.config.ts), `connect-src`). In live and demo modes the place
+  ([`next.config.ts`](next.config.ts), `connect-src`). In live mode the place
   search is sent to Mapbox by the server route
-  [`app/api/geocode/route.ts`](app/api/geocode/route.ts), so what a visitor types in the
-  search box reaches Mapbox. Mapbox's own policy:
+  [`app/api/geocode/route.ts`](app/api/geocode/route.ts), so what a member types in the
+  search box reaches Mapbox. In a demo that route answers 404 first, so nothing typed is sent
+  on ([test](tests/unit/access/demo-surface.spec.ts), "place search in a demo"). Mapbox's own policy:
   <https://www.mapbox.com/legal/privacy>.
 - **The host.** A host such as Vercel keeps request logs (addresses and paths) by its own
   rules. Its policy: <https://vercel.com/legal/privacy-policy>.
