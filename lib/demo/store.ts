@@ -6,6 +6,11 @@
 // A Store method never throws. It answers with a result, so a refused write is a
 // value the route maps to a status, not an exception that could leak or be missed.
 //
+// What a store may assume: the route has checked the shape of every id (a UUID) and of
+// every field before it calls. What a store does not offer: a method that takes file
+// bytes. The browser sends a picture straight to storage (createPhotoUpload, then
+// registerPhoto); the older upload through the server is not part of the contract.
+//
 // Types only: importing this file runs nothing.
 import type { CategoryKey, Location } from "@/types";
 
@@ -50,9 +55,10 @@ export interface LocationPatch {
   photo_offsets?: Location["photo_offsets"];
   photo_lqips?: Location["photo_lqips"];
   /**
-   * A new photo order, as stored file names. The route has checked that each name
-   * belongs to this location. A photo that is not named keeps its place after the
-   * named ones, so a reorder never drops a photo.
+   * A new photo order, as stored file names; never empty. The route has checked that
+   * each name belongs to this location. The named photos come first, in this order.
+   * A photo that is not named follows them: leaving a name out never removes a photo.
+   * A name the store does not hold is ignored.
    */
   photoOrder?: string[];
 }
@@ -90,11 +96,16 @@ export interface Store {
   updateLocation(id: string, patch: LocationPatch): Promise<StoreResult<Location>>;
   /** Removes the location and its photos. */
   deleteLocation(id: string): Promise<StoreResult<{ id: string }>>;
+  // The four photo methods answer `not_found` when the store can tell that the
+  // location is missing. The memory store always can.
   listPhotos(id: string): Promise<StoreResult<PhotoSet>>;
   createPhotoUpload(id: string): Promise<StoreResult<PhotoUpload>>;
   /** Adds an uploaded file (by its storage path) to the location's photos. */
   registerPhoto(id: string, path: string): Promise<StoreResult<PhotoChange>>;
-  /** Removes one photo by file name, or the cover when no name is given. */
+  /**
+   * Removes one photo by file name, or the cover when no name is given. "No name" is
+   * `undefined`: an empty string is a name that matches nothing.
+   */
   deletePhoto(id: string, filename?: string): Promise<StoreResult<PhotoChange>>;
   /** Touches the data source and reports only whether that worked. */
   ping(): Promise<StoreResult<null>>;

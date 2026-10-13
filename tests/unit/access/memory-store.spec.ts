@@ -4,7 +4,17 @@ import path from "node:path";
 import { DEMO_LOCATIONS } from "@/lib/demo/fixtures";
 import { createMemoryStore, demoStore } from "@/lib/demo/memory-store";
 import type { CategoryKey } from "@/types";
-import { A, contractSeed, storeContract } from "./store-contract";
+import {
+  A,
+  A_PHOTOS,
+  UNKNOWN,
+  codeOf,
+  contractSeed,
+  dataOf,
+  nameOf,
+  snapshot,
+  storeContract,
+} from "./store-contract";
 
 // The demo's store (SPEC R3, R4, R17): the contract in both modes, then what is
 // particular to a store that lives in memory, then the made up data itself.
@@ -102,7 +112,9 @@ test.describe("the memory store", () => {
     expect(calls).toEqual([]);
   });
 
-  test("its source reaches for no database client, no network and no environment", () => {
+  // A plain text check of these three files only. The fetch test above is the stronger
+  // proof; this one stops the obvious import from being added without anyone noticing.
+  test("its three source files name no database client, no fetch and no environment", () => {
     const dir = path.join(process.cwd(), "lib", "demo");
     const files = fs.readdirSync(dir).filter((file) => file.endsWith(".ts"));
     expect(files.sort()).toEqual(["fixtures.ts", "memory-store.ts", "store.ts"]);
@@ -116,6 +128,50 @@ test.describe("the memory store", () => {
         expect(code.toLowerCase().includes(banned), `${file}: ${banned}`).toBe(false);
       }
     }
+  });
+});
+
+test.describe("the memory store, beyond the contract", () => {
+  const writable = () => createMemoryStore({ readOnly: false, seed: contractSeed() });
+  const [FIRST, SECOND, THIRD] = A_PHOTOS.map(nameOf);
+  const names = (photos: string[] | undefined) => (photos ?? []).map(nameOf);
+
+  test("answers not_found for an id of any shape, and never throws", async () => {
+    const store = writable();
+    const before = await snapshot(store);
+    for (const id of ["", "not-an-id", "../etc", "__proto__", "constructor", `${A}x`, ` ${A}`]) {
+      expect(codeOf(await store.getLocation(id)), id).toBe("not_found");
+      expect(codeOf(await store.listPhotos(id)), id).toBe("not_found");
+      expect(codeOf(await store.updateLocation(id, { title: "x" })), id).toBe("not_found");
+      expect(codeOf(await store.deleteLocation(id)), id).toBe("not_found");
+      expect(codeOf(await store.deletePhoto(id)), id).toBe("not_found");
+    }
+    expect(await snapshot(store)).toBe(before);
+  });
+
+  test("knows a missing location in every photo method", async () => {
+    const store = writable();
+    expect(codeOf(await store.listPhotos(UNKNOWN))).toBe("not_found");
+    expect(codeOf(await store.deletePhoto(UNKNOWN))).toBe("not_found");
+    expect(codeOf(await store.deletePhoto(UNKNOWN, FIRST))).toBe("not_found");
+    expect(codeOf(await store.createPhotoUpload(UNKNOWN))).toBe("not_found");
+    expect(codeOf(await store.registerPhoto(UNKNOWN, "x.jpg"))).toBe("not_found");
+  });
+
+  test("keeps unnamed photos in their old order; a repeated name or an empty order adds nothing", async () => {
+    const store = writable();
+    const once = dataOf(await store.updateLocation(A, { photoOrder: [THIRD] }));
+    expect(names(once.photos)).toEqual([THIRD, FIRST, SECOND]);
+    const repeated = dataOf(await store.updateLocation(A, { photoOrder: [SECOND, SECOND] }));
+    expect(names(repeated.photos)).toEqual([SECOND, THIRD, FIRST]);
+    const empty = dataOf(await store.updateLocation(A, { photoOrder: [] }));
+    expect(names(empty.photos)).toEqual([SECOND, THIRD, FIRST]);
+  });
+
+  test("treats an empty file name as a name, not as the cover", async () => {
+    const store = writable();
+    const result = dataOf(await store.deletePhoto(A, ""));
+    expect(names(result.photos)).toEqual([FIRST, SECOND, THIRD]);
   });
 });
 
@@ -176,7 +232,7 @@ test.describe("the demo data", () => {
     expect([...used].sort()).toEqual([...CATEGORIES].sort());
   });
 
-  test("lies inside mainland Portugal and far from the test coordinates", () => {
+  test("lies inside a box around mainland Portugal, far from the test coordinates", () => {
     for (const { title, lat, lng } of DEMO_LOCATIONS) {
       expect(lat, title).toBeGreaterThan(36.9);
       expect(lat, title).toBeLessThan(42.2);

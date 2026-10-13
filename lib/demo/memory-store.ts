@@ -188,8 +188,11 @@ export function createMemoryStore(options: MemoryStoreOptions): Store {
 }
 
 // One store per mode and server instance, so what a writable demo saves is still
-// there on the next request.
-const shared: { "demo-readonly"?: Store; "demo-writable"?: Store } = {};
+// there on the next request. Kept on globalThis: the dev server loads this module
+// again after an edit, and the data should outlive that.
+type Shared = { "demo-readonly"?: Store; "demo-writable"?: Store };
+const holder = globalThis as typeof globalThis & { __demoStores?: Shared };
+const shared: Shared = (holder.__demoStores ??= {});
 
 export function demoStore(mode: "demo-readonly" | "demo-writable"): Store {
   return (shared[mode] ??= createMemoryStore({ readOnly: mode === "demo-readonly" }));
