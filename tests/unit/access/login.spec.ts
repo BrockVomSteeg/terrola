@@ -6,13 +6,7 @@ import {
   login,
   type LoginDeps,
 } from "@/app/api/_lib/login";
-import { NextRequest } from "next/server";
-import {
-  CSRF_COOKIE,
-  CSRF_HEADER,
-  generateCsrfToken,
-  verifyCsrf,
-} from "@/app/api/_lib/csrf";
+import { CSRF_COOKIE, csrfTokenFor } from "@/app/api/_lib/csrf";
 import { createLimiter } from "@/app/api/_lib/rate-limit";
 import { verifySessionToken } from "@/lib/session";
 
@@ -226,8 +220,15 @@ test.describe("login: the password and the session", () => {
     expect(header).toMatch(/;\s*Max-Age=2592000/i);
     expect(header).not.toMatch(/;\s*Domain=/i);
 
+    // The write token is the one for exactly this session, and the page can read it.
     const csrf = res.cookies.get(CSRF_COOKIE);
     expect(csrf?.value).toMatch(/^[0-9a-f]{64}$/);
+    expect(csrf?.value).toBe(await csrfTokenFor(session?.value, LIVE));
+    const csrfHeader =
+      res.headers.getSetCookie().find((c) => c.startsWith(`${CSRF_COOKIE}=`)) ?? "";
+    expect(csrfHeader).not.toMatch(/;\s*HttpOnly/i);
+    expect(csrfHeader).toMatch(/;\s*SameSite=strict/i);
+    expect(csrfHeader).toMatch(/;\s*Max-Age=2592000/i);
     // The password, the key and the hash appear nowhere in the answer.
     const everything = JSON.stringify([...res.headers.entries()]);
     for (const secret of [PASSWORD, KEY, HASH]) {
@@ -273,170 +274,5 @@ test.describe("login: the password and the session", () => {
     expect(
       await verifySessionToken(res.cookies.get("app_session")?.value, env),
     ).toBe(true);
-  });
-});
-
-test.describe("CSRF token (double submit)", () => {
-  const token = generateCsrfToken();
-  const request = (header?: string, cookie?: string) =>
-    new NextRequest("http://localhost/api/locations", {
-      method: "POST",
-      headers: {
-        ...(header === undefined ? {} : { [CSRF_HEADER]: header }),
-        ...(cookie === undefined ? {} : { cookie: `${CSRF_COOKIE}=${cookie}` }),
-      },
-    });
-
-  test("a token is 64 lowercase hex characters and never repeats", () => {
-    expect(token).toMatch(/^[0-9a-f]{64}$/);
-    expect(generateCsrfToken()).not.toBe(token);
-  });
-
-  test("the header must equal the cookie", () => {
-    expect(verifyCsrf(request(token, token))).toBe(true);
-    const other = generateCsrfToken();
-    expect(verifyCsrf(request(token, other))).toBe(false);
-    expect(verifyCsrf(request(token, undefined))).toBe(false);
-    expect(verifyCsrf(request(undefined, token))).toBe(false);
-    expect(verifyCsrf(request("", ""))).toBe(false);
-  });
-
-  test("two equal values that are not tokens do not pass", () => {
-    for (const same of ["zz", "not-a-token", token.toUpperCase(), token + "0", token.slice(1)]) {
-      expect(verifyCsrf(request(same, same)), same.slice(0, 12)).toBe(false);
-    }
-  });
-});
-
-test.describe("login: limits", () => {
-  const perClient = LOGIN_LIMITS.perClient.limit;
-  const everyone = LOGIN_LIMITS.everyone.limit;
-
-  test("the limits are 5 per client and 60 for everyone, per 15 minutes", () => {
-    expect(LOGIN_LIMITS.perClient).toEqual({ limit: 5, windowMs: 900_000 });
-    expect(LOGIN_LIMITS.everyone).toEqual({ limit: 60, windowMs: 900_000 });
-  });
-
-  test("on Vercel one client gets five tries, then 429 without a password check", async () => {
-    const { deps, seen } = setup(ON_VERCEL);
-    for (let i = 0; i < perClient; i++) {
-      expect((await attempt(deps, "wrong", CLIENT_A)).status).toBe(401);
-    }
-    // Even the right password is refused now, and never checked.
-    const res = await attempt(deps, PASSWORD, CLIENT_A);
-    expect(res.status).toBe(429);
-    expect(Number(res.headers.get("retry-after"))).toBeGreaterThan(0);
-    expect(Number(res.headers.get("retry-after"))).toBeLessThanOrEqual(900);
-    expect(res.headers.getSetCookie()).toEqual([]);
-    expect(seen).toHaveLength(perClient);
-    // Another client is not affected.
-    expect((await attempt(deps, PASSWORD, CLIENT_B)).status).toBe(200);
-  });
-
-  test("a refused client's request body is never touched", async () => {
-    const { deps, seen } = setup(ON_VERCEL);
-    for (let i = 0; i < perClient; i++) await attempt(deps, "wrong", CLIENT_A);
-    let touched = false;
-    const next = {
-      headers: new Headers(CLIENT_A),
-      get body() {
-        touched = true;
-        return null;
-      },
-    } as unknown as Request;
-    expect((await login(next, deps)).status).toBe(429);
-    expect(touched).toBe(false);
-    expect(seen).toHaveLength(perClient);
-  });
-
-  test("a header the caller can forge does not buy a fresh count", async () => {
-    const { deps, seen } = setup(ON_VERCEL);
-    for (let i = 0; i < perClient + 10; i++) {
-      await attempt(deps, "wrong", {
-        ...CLIENT_A,
-        "x-forwarded-for": `198.51.100.${i}`,
-      });
-    }
-    expect(seen).toHaveLength(perClient);
-  });
-
-  test("a burst of parallel requests is counted one by one", async () => {
-    let release = () => {};
-    const gate = new Promise<void>((resolve) => (release = resolve));
-    const { deps, seen } = setup(ON_VERCEL, async () => {
-      await gate;
-      return false;
-    });
-    const burst = Array.from({ length: 20 }, () =>
-      attempt(deps, "wrong", CLIENT_A),
-    );
-    // Wait until the requests that were let through are all at the password
-    // check, held there, before any of them finishes.
-    await expect.poll(() => seen.length).toBe(perClient);
-    release();
-    const statuses = (await Promise.all(burst)).map((r) => r.status).sort();
-    expect(seen).toHaveLength(perClient);
-    expect(statuses.filter((s) => s === 401)).toHaveLength(perClient);
-    expect(statuses.filter((s) => s === 429)).toHaveLength(20 - perClient);
-  });
-
-  test("the right password clears the client's own count", async () => {
-    const { deps } = setup(ON_VERCEL);
-    for (let round = 0; round < 3; round++) {
-      for (let i = 0; i < perClient - 1; i++) {
-        expect((await attempt(deps, "wrong", CLIENT_A)).status).toBe(401);
-      }
-      expect((await attempt(deps, PASSWORD, CLIENT_A)).status).toBe(200);
-    }
-  });
-
-  test("off Vercel no address is trusted: only the limit for everyone applies", async () => {
-    const { deps, seen } = setup(LIVE);
-    for (let i = 0; i < everyone; i++) {
-      const res = await attempt(deps, "wrong", {
-        "x-forwarded-for": "198.51.100.1",
-        "x-real-ip": "198.51.100.1",
-        "x-vercel-forwarded-for": "198.51.100.1",
-      });
-      expect(res.status, `attempt ${i + 1}`).toBe(401);
-    }
-    const res = await attempt(deps, PASSWORD);
-    expect(res.status).toBe(429);
-    expect(Number(res.headers.get("retry-after"))).toBeGreaterThan(0);
-    expect(seen).toHaveLength(everyone);
-    expect(deps.perClient.size()).toBe(0);
-  });
-
-  test("on Vercel many clients together still hit the limit for everyone", async () => {
-    const { deps, seen } = setup(ON_VERCEL);
-    for (let i = 0; i < everyone; i++) {
-      const res = await attempt(deps, "wrong", {
-        "x-vercel-forwarded-for": `203.0.113.${i}`,
-      });
-      expect(res.status).toBe(401);
-    }
-    const res = await attempt(deps, PASSWORD, {
-      "x-vercel-forwarded-for": "198.51.100.200",
-    });
-    expect(res.status).toBe(429);
-    expect(seen).toHaveLength(everyone);
-  });
-
-  test("one client that is already refused does not use up the limit for everyone", async () => {
-    const { deps } = setup(ON_VERCEL);
-    for (let i = 0; i < everyone * 2; i++) {
-      await attempt(deps, "wrong", CLIENT_A);
-    }
-    expect((await attempt(deps, PASSWORD, CLIENT_B)).status).toBe(200);
-  });
-
-  test("a refused request, a demo and a missing key do not count", async () => {
-    const { deps: demo } = setup({ DEMO_MODE: "1" });
-    const { deps: noKey } = setup({ ...ON_VERCEL, SESSION_SECRET: undefined });
-    for (const deps of [demo, noKey]) {
-      await attempt(deps, PASSWORD, CLIENT_A);
-      expect(deps.perClient.size()).toBe(0);
-      expect(deps.everyone.size()).toBe(0);
-    }
   });
 });

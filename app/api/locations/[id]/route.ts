@@ -11,7 +11,7 @@ import {
   MIN_PHOTO_SCALE,
   MAX_PHOTO_SCALE,
 } from "@/lib/photos";
-import { verifyCsrf } from "@/app/api/_lib/csrf";
+import { checkCsrf } from "@/app/api/_lib/csrf";
 import { checkRateLimit, RATE_LIMITS } from "@/app/api/_lib/rate-limit";
 import type { CategoryKey } from "@/types";
 
@@ -74,7 +74,7 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  if (!verifyCsrf(request)) {
+  if (!(await checkCsrf(request)).ok) {
     return NextResponse.json(
       { error: "CSRF token missing or invalid" },
       { status: 403 },
@@ -452,7 +452,7 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  if (!verifyCsrf(request)) {
+  if (!(await checkCsrf(request)).ok) {
     return NextResponse.json(
       { error: "CSRF token missing or invalid" },
       { status: 403 },
