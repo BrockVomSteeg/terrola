@@ -120,7 +120,7 @@ export function createMemoryStore(options: MemoryStoreOptions): Store {
         const next: Location = copy(found);
         for (const field of PLAIN_FIELDS) {
           const value = patch[field];
-          if (value !== undefined) Object.assign(next, { [field]: copy(value) });
+          Object.assign(next, { [field]: copy(value) });
         }
         if (patch.photoOrder) {
           const current = next.photos ?? [];
