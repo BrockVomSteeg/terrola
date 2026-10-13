@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import { getStore } from "@/lib/demo/gate";
 import { COOKIE_NAME } from "@/lib/session";
 import type { Location } from "@/types";
@@ -13,6 +14,9 @@ async function getInitialLocations(): Promise<Location[]> {
   // The gate decides: made up pins in a demo, the database behind a valid session in
   // live mode. It never throws; anything short of a list shows an empty map.
   const store = await getStore({ kind: "session", token });
+  // Only reachable if the proxy was skipped: no session, so back to the login page
+  // instead of an empty map that keeps asking for data it will not get.
+  if (!store.ok && store.error.code === "unauthorized") redirect("/");
   if (!store.ok) return [];
   const listed = await store.data.listLocations();
   return listed.ok ? listed.data : [];

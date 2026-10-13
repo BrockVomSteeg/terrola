@@ -1,7 +1,12 @@
 // The live store: the Supabase side of the Store contract (SPEC R17). It checks the
 // caller itself before it hands anything out: a valid session for data, the cron
-// secret for the ping. The proxy has already checked; this is the second gate, so a
-// request that slips past the proxy still reaches nothing.
+// secret for the ping (live-access.ts). The proxy has already checked; this is the
+// second gate, so a request that slips past the proxy still reaches nothing.
+//
+// The gate never opens or calls this store in a demo. The module itself can still be
+// loaded there, because the photo route imports two helpers from it for its write
+// handlers; loading it connects to nothing (the database client is made on first
+// use, and a demo has no credentials to make it with).
 //
 // Only the read half is here so far. The write handlers still call the database
 // directly, after the proxy and the write token check; they move behind this store
@@ -21,7 +26,6 @@ import {
 } from "@/lib/supabase-server";
 import { attachCoverLqip, photoFilename } from "@/lib/photos";
 import { filterLiveLocations } from "@/lib/locations";
-import { verifySessionToken } from "@/lib/session";
 import {
   ok,
   refused,
@@ -30,7 +34,7 @@ import {
   type StoreResult,
 } from "@/lib/demo/store";
 import type { Location } from "@/types";
-import { cronAuthorized } from "./cron";
+import { identify, storeFor } from "./live-access";
 
 type Env = Record<string, string | undefined>;
 
@@ -230,33 +234,15 @@ async function ping(): Promise<StoreResult<null>> {
   }
 }
 
-const notForTheScheduler = async () => refused<never>("unauthorized");
-
 /**
- * The live store for one caller, or `unauthorized`.
- *
- *   session  a valid session cookie value: the reads and the ping
- *   cron     the scheduler's secret: the ping and nothing else
- *
- * Nothing touches the database before the credential has passed.
+ * The live store for one caller, or `unauthorized`. Who the caller is and what it may
+ * use is decided in live-access.ts. Nothing touches the database before that.
  */
 export async function openLiveStore(
   credential: Credential,
   env: Env = process.env,
 ): Promise<StoreResult<ReadStore>> {
-  if (credential.kind === "cron") {
-    if (!(await cronAuthorized(credential.authorization, env))) {
-      return refused("unauthorized");
-    }
-    return ok({
-      listLocations: notForTheScheduler,
-      getLocation: notForTheScheduler,
-      listPhotos: notForTheScheduler,
-      ping,
-    });
-  }
-  if (!(await verifySessionToken(credential.token, env))) {
-    return refused("unauthorized");
-  }
-  return ok({ ...reads, ping });
+  const caller = await identify(credential, env);
+  if (!caller) return refused("unauthorized");
+  return ok(storeFor(caller, { ...reads, ping }));
 }

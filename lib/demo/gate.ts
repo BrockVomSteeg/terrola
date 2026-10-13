@@ -1,8 +1,8 @@
 // The data layer gate (SPEC R17). Every page and route that reads data asks here for
 // a store and gets exactly one of two:
 //
-//   demo  the in-memory store. The live store's module is never loaded, so a demo
-//         has no code path to the database at all (R3).
+//   demo  the in-memory store. The gate never opens or calls the live store in a
+//         demo, and a demo has no database credentials to begin with (R3).
 //   live  the Supabase store, which checks the caller's credential itself before it
 //         hands anything out. The proxy is never the only gate.
 //
