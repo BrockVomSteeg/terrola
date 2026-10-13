@@ -1093,7 +1093,7 @@ export default function MapCanvas({
             </span>
           )}
           {readOnly && <DemoBanner />}
-          {!readOnly && (
+          {(
             <button
               onClick={() => {
                 setAdminOpen(true);

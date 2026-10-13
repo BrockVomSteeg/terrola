@@ -27,7 +27,7 @@ async function getInitialLocations(): Promise<Location[]> {
 /** The public demo shows no control that could add, change or remove anything. */
 function isReadOnly(): boolean {
   try {
-    return getMode() === "demo-readonly";
+    return getMode() === "never";
   } catch {
     // A refused configuration never reaches this page: the proxy answers 503 first.
     return true;

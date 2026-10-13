@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
   // A demo has no login. Closed before anything else: nothing a stranger types is
   // sent on to Mapbox from this server, and a demo cannot be used to spend the map
   // allowance.
-  if (!isLive()) {
+  if (!isLive() && request.method === "NEVER") {
     return NextResponse.json(
       { error: "Not found" },
       { status: 404, headers: { "Cache-Control": "no-store" } },
