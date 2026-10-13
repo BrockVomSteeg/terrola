@@ -13,6 +13,9 @@ import {
 } from "@/lib/photos";
 import { checkCsrf } from "@/app/api/_lib/csrf";
 import { checkRateLimit, RATE_LIMITS } from "@/app/api/_lib/rate-limit";
+import { storeError } from "@/app/api/_lib/store-response";
+import { getStore } from "@/lib/demo/gate";
+import { COOKIE_NAME } from "@/lib/session";
 import type { CategoryKey } from "@/types";
 
 // Max distinct photos a location can hold (matches the 10-photo upload cap,
@@ -34,7 +37,7 @@ const VALID_CATEGORIES: CategoryKey[] = [
 ];
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
@@ -42,30 +45,17 @@ export async function GET(
     return NextResponse.json({ error: "Invalid id format" }, { status: 400 });
   }
 
-  const { data, error } = await getSupabaseAdmin()
-    .from("locations")
-    .select("*")
-    .eq("id", id)
-    .single();
-
-  if (error || !data) {
-    if (error?.code === "PGRST116") {
-      return NextResponse.json(
-        { error: "Location not found" },
-        { status: 404 },
-      );
-    }
-    if (process.env.NODE_ENV !== "production")
-      console.error("[app] Supabase GET-by-id error:", error);
-    return NextResponse.json(
-      { error: "Failed to load location" },
-      { status: 500 },
-    );
-  }
+  const store = await getStore({
+    kind: "session",
+    token: request.cookies.get(COOKIE_NAME)?.value,
+  });
+  if (!store.ok) return storeError(store.error.code, "Failed to load location");
+  const found = await store.data.getLocation(id);
+  if (!found.ok) return storeError(found.error.code, "Failed to load location");
 
   // no-store: same staleness class as the list — a CDN copy could serve a
   // just-edited/deleted row to other devices for the SWR window. Fresh-on-read.
-  return NextResponse.json(data, {
+  return NextResponse.json(found.data, {
     headers: { "Cache-Control": "no-store" },
   });
 }

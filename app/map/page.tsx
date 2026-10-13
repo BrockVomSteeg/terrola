@@ -1,33 +1,25 @@
-import { getSupabaseAdmin, freshenCoverUrls } from "@/lib/supabase-server";
-import { attachCoverLqip } from "@/lib/photos";
-import { filterLiveLocations } from "@/lib/locations";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
+import { getStore } from "@/lib/demo/gate";
+import { COOKIE_NAME } from "@/lib/session";
 import type { Location } from "@/types";
 import MapCanvas from "@/components/Map/MapCanvas";
 
-export const revalidate = 30;
+// Rendered on every request, never from a build time copy (SPEC R3): what this page
+// shows depends on the mode and on who is asking.
+export const dynamic = "force-dynamic";
 
 async function getInitialLocations(): Promise<Location[]> {
-  try {
-    const { data, error } = await getSupabaseAdmin()
-      .from("locations")
-      .select("*")
-      .order("created_at", { ascending: false });
-
-    if (error) {
-      if (process.env.NODE_ENV !== "production")
-        console.error("[app] Initial locations fetch error:", error);
-      return [];
-    }
-
-    // Production-only: keep test/null-island rows out of the SSR payload too, so
-    // the very first paint of the live app never shows a phantom pin (matches the
-    // GET /api/locations filter). No-op in dev.
-    const live = filterLiveLocations((data as Location[]) ?? []);
-    const freshened = await freshenCoverUrls(live);
-    return attachCoverLqip(freshened);
-  } catch {
-    return [];
-  }
+  const token = (await cookies()).get(COOKIE_NAME)?.value;
+  // The gate decides: made up pins in a demo, the database behind a valid session in
+  // live mode. It never throws; anything short of a list shows an empty map.
+  const store = await getStore({ kind: "session", token });
+  // Only reachable if the proxy was skipped: no session, so back to the login page
+  // instead of an empty map that keeps asking for data it will not get.
+  if (!store.ok && store.error.code === "unauthorized") redirect("/");
+  if (!store.ok) return [];
+  const listed = await store.data.listLocations();
+  return listed.ok ? listed.data : [];
 }
 
 export default async function MapPage() {
