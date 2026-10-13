@@ -51,6 +51,17 @@ test.describe("session key (R18)", () => {
     expect(getSessionKey({ SESSION_SECRET: exact })).toBe(exact);
   });
 
+  test("spaces do not count towards the length", () => {
+    expect(
+      getSessionKey({ SESSION_SECRET: " ".repeat(SESSION_SECRET_MIN_LENGTH) }),
+    ).toBeNull();
+    expect(
+      getSessionKey({
+        SESSION_SECRET: "k".repeat(SESSION_SECRET_MIN_LENGTH - 1) + " ",
+      }),
+    ).toBeNull();
+  });
+
   test("the password hash never signs a session", async () => {
     const hashOnly: Env = { SITE_PASSWORD_HASH: HASH_A };
     expect(getSessionKey(hashOnly)).toBeNull();
@@ -169,7 +180,16 @@ test.describe("session token", () => {
 
   test("a correctly signed token with a broken payload is refused", async () => {
     const { payload } = await freshPayload();
+    const raw = (text: string) =>
+      `${b64url(text)}.${createHmac("sha256", KEY).update(b64url(text)).digest("base64url")}`;
     const broken = [
+      // A session lasts exactly 30 days from its start, never longer.
+      handSigned({ ...payload, exp: payload.exp + 1 }),
+      handSigned({ ...payload, exp: payload.iat + COOKIE_MAX_AGE * 10 }),
+      handSigned({ ...payload, iat: payload.iat - 1 }),
+      // JSON.parse turns 1e999 into Infinity.
+      raw(`{"v":2,"iat":${payload.iat},"exp":1e999,"pw":"${payload.pw}"}`),
+      raw(`{"v":2,"iat":-1e999,"exp":1e999,"pw":"${payload.pw}"}`),
       handSigned({ ...payload, exp: String(payload.exp) }),
       handSigned({ ...payload, exp: undefined }),
       handSigned({ ...payload, iat: "now" }),

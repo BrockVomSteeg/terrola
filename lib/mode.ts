@@ -93,7 +93,7 @@ export function checkEnv(env: Env = process.env): {
     missing.push("SUPABASE_URL");
   if (!isSet(env, "SUPABASE_SERVICE_KEY")) missing.push("SUPABASE_SERVICE_KEY");
   if (!isSet(env, "SITE_PASSWORD_HASH")) missing.push("SITE_PASSWORD_HASH");
-  if ((env.SESSION_SECRET ?? "").length < SESSION_SECRET_MIN_LENGTH)
+  if ((env.SESSION_SECRET ?? "").trim().length < SESSION_SECRET_MIN_LENGTH)
     missing.push(
       `SESSION_SECRET (${SESSION_SECRET_MIN_LENGTH} or more characters)`,
     );

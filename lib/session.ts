@@ -100,7 +100,10 @@ export function decodeHash(raw: string | undefined | null): string | null {
  */
 export function getSessionKey(env: Env = process.env): string | null {
   const secret = env.SESSION_SECRET;
-  return secret && secret.length >= SESSION_SECRET_MIN_LENGTH ? secret : null;
+  // Trimmed for the length test only, so padding with spaces does not count.
+  return secret && secret.trim().length >= SESSION_SECRET_MIN_LENGTH
+    ? secret
+    : null;
 }
 
 // -- base64url helpers (binary-safe) -------------------------------------------
@@ -263,6 +266,10 @@ async function verifyAndDecode(
     const p = payload as Partial<SessionPayload>;
     if (p.v !== TOKEN_VERSION) return null;
     if (typeof p.iat !== "number" || typeof p.exp !== "number") return null;
+    // A session lasts exactly COOKIE_MAX_AGE from its start. Anything else
+    // (a far future expiry, Infinity from "1e999") was not minted here.
+    if (!Number.isFinite(p.iat) || p.exp - p.iat !== COOKIE_MAX_AGE)
+      return null;
     if (Math.floor(Date.now() / 1000) >= p.exp) return null;
 
     const pw = await passwordFingerprint(key, env);

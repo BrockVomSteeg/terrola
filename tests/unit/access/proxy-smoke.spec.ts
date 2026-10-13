@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { createHmac } from "node:crypto";
 import { NextRequest } from "next/server";
 import { unstable_doesMiddlewareMatch } from "next/experimental/testing/server";
 import { config, proxy } from "@/proxy";
@@ -144,9 +145,21 @@ test.describe("proxy harness", () => {
 
   test("a session signed with the password hash is refused", async () => {
     // The old fallback: no SESSION_SECRET, so the hash signed the session.
+    // Build exactly the token the old code minted (version 1, hash as key)
+    // and the same in today's version, and present both.
     env.SITE_PASSWORD_HASH = TEST_HASH;
     expect(await createSessionToken()).toBeNull();
-    const res = await proxy(new NextRequest("http://localhost/api/locations"));
-    expect(res.status).toBe(503);
+    const iat = Math.floor(Date.now() / 1000);
+    for (const v of [1, 2]) {
+      const body = Buffer.from(
+        JSON.stringify({ v, iat, exp: iat + 60 * 60 * 24 * 30 }),
+      ).toString("base64url");
+      const sig = createHmac("sha256", TEST_HASH)
+        .update(body)
+        .digest("base64url");
+      const res = await proxy(withSession("/api/locations", `${body}.${sig}`));
+      expect(res.status, `version ${v}`).toBe(503);
+      expect(res.headers.get("x-middleware-next")).toBeNull();
+    }
   });
 });
