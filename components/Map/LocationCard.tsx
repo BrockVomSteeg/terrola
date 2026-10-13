@@ -21,6 +21,8 @@ interface LocationCardProps {
   onDelete: (location: Location) => void;
   /** Persist a reframe done from the lightbox back into app state (map + list). */
   onLocationUpdated?: (location: Location) => void;
+  /** The public demo: no edit, no remove, no reframe. */
+  readOnly?: boolean;
 }
 
 const PencilIcon = () => (
@@ -63,6 +65,7 @@ export default function LocationCard({
   onEdit,
   onDelete,
   onLocationUpdated,
+  readOnly = false,
 }: LocationCardProps) {
   const [visible, setVisible] = useState(false);
   const [activePhotoIndex, setActivePhotoIndex] = useState(0);
@@ -589,76 +592,80 @@ export default function LocationCard({
               </p>
             )}
 
-            {/* Action buttons */}
-            <hr
-              style={{
-                border: "none",
-                borderTop: "1px solid rgba(193,127,90,0.12)",
-                margin: "14px 0 10px",
-              }}
-            />
-            <div
-              style={{
-                display: "flex",
-                gap: "4px",
-                justifyContent: "flex-end",
-              }}
-            >
-              <button
-                onClick={() => {
-                  onEdit(location);
-                  onClose();
-                }}
-                title="Edit this place"
-                aria-label="Edit this place"
-                style={{
-                  background: "none",
-                  border: "none",
-                  cursor: "pointer",
-                  color: "#9B8578",
-                  padding: "4px 6px",
-                  display: "flex",
-                  alignItems: "center",
-                }}
-                onMouseEnter={(e) => {
-                  (e.currentTarget as HTMLButtonElement).style.color =
-                    "#C17F5A";
-                }}
-                onMouseLeave={(e) => {
-                  (e.currentTarget as HTMLButtonElement).style.color =
-                    "#9B8578";
-                }}
-              >
-                <PencilIcon />
-              </button>
-              <button
-                onClick={() => {
-                  onDelete(location);
-                  onClose();
-                }}
-                title="Remove this place"
-                aria-label="Remove this place"
-                style={{
-                  background: "none",
-                  border: "none",
-                  cursor: "pointer",
-                  color: "#9B8578",
-                  padding: "4px 6px",
-                  display: "flex",
-                  alignItems: "center",
-                }}
-                onMouseEnter={(e) => {
-                  (e.currentTarget as HTMLButtonElement).style.color =
-                    "#e05c6b";
-                }}
-                onMouseLeave={(e) => {
-                  (e.currentTarget as HTMLButtonElement).style.color =
-                    "#9B8578";
-                }}
-              >
-                <TrashIcon />
-              </button>
-            </div>
+            {/* Action buttons: none in the read only demo */}
+            {!readOnly && (
+              <>
+                <hr
+                  style={{
+                    border: "none",
+                    borderTop: "1px solid rgba(193,127,90,0.12)",
+                    margin: "14px 0 10px",
+                  }}
+                />
+                <div
+                  style={{
+                    display: "flex",
+                    gap: "4px",
+                    justifyContent: "flex-end",
+                  }}
+                >
+                  <button
+                    onClick={() => {
+                      onEdit(location);
+                      onClose();
+                    }}
+                    title="Edit this place"
+                    aria-label="Edit this place"
+                    style={{
+                      background: "none",
+                      border: "none",
+                      cursor: "pointer",
+                      color: "#9B8578",
+                      padding: "4px 6px",
+                      display: "flex",
+                      alignItems: "center",
+                    }}
+                    onMouseEnter={(e) => {
+                      (e.currentTarget as HTMLButtonElement).style.color =
+                        "#C17F5A";
+                    }}
+                    onMouseLeave={(e) => {
+                      (e.currentTarget as HTMLButtonElement).style.color =
+                        "#9B8578";
+                    }}
+                  >
+                    <PencilIcon />
+                  </button>
+                  <button
+                    onClick={() => {
+                      onDelete(location);
+                      onClose();
+                    }}
+                    title="Remove this place"
+                    aria-label="Remove this place"
+                    style={{
+                      background: "none",
+                      border: "none",
+                      cursor: "pointer",
+                      color: "#9B8578",
+                      padding: "4px 6px",
+                      display: "flex",
+                      alignItems: "center",
+                    }}
+                    onMouseEnter={(e) => {
+                      (e.currentTarget as HTMLButtonElement).style.color =
+                        "#e05c6b";
+                    }}
+                    onMouseLeave={(e) => {
+                      (e.currentTarget as HTMLButtonElement).style.color =
+                        "#9B8578";
+                    }}
+                  >
+                    <TrashIcon />
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
 
@@ -686,11 +693,15 @@ export default function LocationCard({
           photos={lightboxPhotos}
           initialIndex={Math.min(selectedPhotoIndex, lightboxPhotos.length - 1)}
           onClose={() => setSelectedPhotoIndex(null)}
-          onReframe={(url) => {
-            // Close the lightbox and open the reframe editor on top of the card.
-            setSelectedPhotoIndex(null);
-            setReframePhotoUrl(url);
-          }}
+          onReframe={
+            readOnly
+              ? undefined
+              : (url) => {
+                  // Close the lightbox and open the reframe editor on top of the card.
+                  setSelectedPhotoIndex(null);
+                  setReframePhotoUrl(url);
+                }
+          }
         />
       )}
 
