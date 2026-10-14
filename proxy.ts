@@ -169,7 +169,7 @@ export const config = {
   // refused here. The second entry puts the image optimizer back in: this app does not
   // use it, and it has no row in the list, so it is refused.
   matcher: [
-    "/((?!_next/|__nextjs|favicon\\.ico$|manifest\\.json$|icon-192\\.png$|icon-512\\.png$|icon-192\\.svg$|icon-512\\.svg$|demo/location-photos/[0-9a-f-]+-[0-9]+\\.svg$).*)",
+    "/((?!_next/|__nextjs|favicon\\.ico$|manifest\\.json$|icon-192\\.png$|icon-512\\.png$|icon-192\\.svg$|icon-512\\.svg$|demo/).*)",
     "/_next/image",
   ],
 };

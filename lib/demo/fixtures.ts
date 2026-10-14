@@ -129,7 +129,7 @@ const FIRST_STAMP = 1700000000000;
 const pictures = (n: number): string[] =>
   Array.from(
     { length: PICTURES[n] ?? 0 },
-    (_, k) => `/demo/location-photos/${id(n)}-${FIRST_STAMP + k}.svg`,
+    (_, k) => `/demo/location-photos/${id(n + 1)}-${FIRST_STAMP + k}.svg`,
   );
 
 // Newest first, one day apart, so the order is the same on every run.
