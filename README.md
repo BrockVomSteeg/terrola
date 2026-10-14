@@ -5,11 +5,12 @@ A private map of the places you share.
 Terrola is a shared map for a small group. Pin places, add photos and notes, and see them on
 a map with a warm palette. You host it yourself on Next.js, Supabase and Mapbox.
 
-DEMO_URL_TBD
+Demo: <https://terrola.vercel.app>
 
 PICTURE_TBD
 
-The demo is open and read only, on made up data. It has no login and cannot change anything.
+The demo is open and read only, on made up data: twelve invented places with drawn pictures.
+It has no login and cannot change anything.
 
 ## What is checked
 
@@ -27,15 +28,16 @@ under [`tests/unit/access/`](tests/unit/access/).
 | Password guessing is slowed | [`app/api/_lib/login.ts`](app/api/_lib/login.ts), [`app/api/_lib/rate-limit.ts`](app/api/_lib/rate-limit.ts) | [`login.spec.ts`](tests/unit/access/login.spec.ts), [`rate-limit.spec.ts`](tests/unit/access/rate-limit.spec.ts) |
 | Keep-alive needs a secret and returns no error text | [`app/api/_lib/cron.ts`](app/api/_lib/cron.ts) | [`keep-alive.spec.ts`](tests/unit/access/keep-alive.spec.ts) |
 | The demo's data is made up and held in memory | [`lib/demo/fixtures.ts`](lib/demo/fixtures.ts), [`lib/demo/memory-store.ts`](lib/demo/memory-store.ts) | [`memory-store.spec.ts`](tests/unit/access/memory-store.spec.ts) |
+| The demo's pictures are drawings the app serves itself, and nothing else under `/demo` skips the proxy | [`public/demo/location-photos/`](public/demo/location-photos/), [`proxy.ts`](proxy.ts) | [`memory-store.spec.ts`](tests/unit/access/memory-store.spec.ts), [`proxy-matrix.spec.ts`](tests/unit/access/proxy-matrix.spec.ts) |
 | Reads go through one gate that checks the caller again | [`lib/demo/gate.ts`](lib/demo/gate.ts), [`app/api/_lib/live-access.ts`](app/api/_lib/live-access.ts) | [`gate.spec.ts`](tests/unit/access/gate.spec.ts), [`live-access.spec.ts`](tests/unit/access/live-access.spec.ts) |
 | The demo screen offers no control that writes, and place search is closed | [`components/Map/MapCanvas.tsx`](components/Map/MapCanvas.tsx), [`app/api/geocode/route.ts`](app/api/geocode/route.ts) | [`demo-surface.spec.ts`](tests/unit/access/demo-surface.spec.ts) |
 | A pull request from a lane branch touches only that lane's files | [`LANES.json`](LANES.json), [`scripts/gates/lane-ownership.mjs`](scripts/gates/lane-ownership.mjs) | CI job `gates` in [`build.yml`](.github/workflows/build.yml) |
 
-The tests fail when a rule is removed. Seven pull requests each show this in their description
+The tests fail when a rule is removed. Eight pull requests each show this in their description
 with a proof run: CI on a copy with rules weakened on purpose, where the tests for those rules
 fail. They are [PR 8](../../pull/8), [PR 9](../../pull/9), [PR 10](../../pull/10),
-[PR 12](../../pull/12), [PR 14](../../pull/14), [PR 18](../../pull/18) and
-[PR 21](../../pull/21).
+[PR 12](../../pull/12), [PR 14](../../pull/14), [PR 18](../../pull/18),
+[PR 21](../../pull/21) and [PR 30](../../pull/30).
 
 More detail: [SECURITY.md](SECURITY.md), [PRIVACY.md](PRIVACY.md),
 [docs/threat-model.md](docs/threat-model.md),
@@ -50,7 +52,7 @@ Counted from the repository on 2026-10-13.
   `build.yml`, `check` in `no-direct-supabase.yml`, `lock` in `lockfile.yml`.
 - 3 gate scripts in `scripts/gates/` (brand, lane ownership, personal strings). Two of them
   run in CI today.
-- 317 unit tests passed in the `unit` job on `main` at commit `d544359`. The job prints the
+- 321 unit tests passed in the `unit` job on `main` at commit `b4d7f08`. The job prints the
   count in every CI run.
 - Lighthouse scores: not measured yet.
 
@@ -117,7 +119,7 @@ how each change was checked:
   files) have CI and no recorded review. The unit test job did not exist yet; PR 7 added it.
 - From PR 7 on, each merged pull request has an independent review by a different model with
   fresh context, recorded as a comment on the pull request.
-- The seven pull requests listed under "What is checked" also have a proof run.
+- The eight pull requests listed under "What is checked" also have a proof run.
 
 This repository does not show a line by line review of the code by a human, and this README
 does not claim one.

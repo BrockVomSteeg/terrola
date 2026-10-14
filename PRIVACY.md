@@ -11,6 +11,10 @@ The demo stores nothing about visitors.
   ([`lib/demo/fixtures.ts`](lib/demo/fixtures.ts),
   [`lib/demo/memory-store.ts`](lib/demo/memory-store.ts);
   [test](tests/unit/access/memory-store.spec.ts), "is twelve pins with fixed, distinct ids").
+- Its pictures are twelve drawings made in code, kept as files in this repository and served
+  by the app itself. They are not photographs and show no person
+  ([`public/demo/location-photos/`](public/demo/location-photos/),
+  [`docs/ASSETS.md`](docs/ASSETS.md)).
 - The read only demo accepts no writes, so a visitor cannot add anything
   ([`proxy.ts`](proxy.ts), step 2).
 - It sets no cookie. A login attempt is refused: the proxy answers 403 to every write in the
