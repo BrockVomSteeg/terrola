@@ -7,7 +7,9 @@ a map with a warm palette. You host it yourself on Next.js, Supabase and Mapbox.
 
 Demo: <https://terrola.vercel.app>
 
-PICTURE_TBD
+![The Terrola demo: the list of places, an open place card with a drawn picture, and the map](docs/demo.jpg)
+
+The hosted demo on 2026-10-13. Map: © Mapbox, © OpenStreetMap.
 
 The demo is open and read only, on made up data: twelve invented places with drawn pictures.
 It has no login and cannot change anything.
@@ -29,6 +31,7 @@ under [`tests/unit/access/`](tests/unit/access/).
 | Keep-alive needs a secret and returns no error text | [`app/api/_lib/cron.ts`](app/api/_lib/cron.ts) | [`keep-alive.spec.ts`](tests/unit/access/keep-alive.spec.ts) |
 | The demo's data is made up and held in memory | [`lib/demo/fixtures.ts`](lib/demo/fixtures.ts), [`lib/demo/memory-store.ts`](lib/demo/memory-store.ts) | [`memory-store.spec.ts`](tests/unit/access/memory-store.spec.ts) |
 | The demo's pictures are drawings the app serves itself, and nothing else under `/demo` skips the proxy | [`public/demo/location-photos/`](public/demo/location-photos/), [`proxy.ts`](proxy.ts) | [`memory-store.spec.ts`](tests/unit/access/memory-store.spec.ts), [`proxy-matrix.spec.ts`](tests/unit/access/proxy-matrix.spec.ts) |
+| The Mapbox wordmark and attribution are not under the list or an open place card | [`components/Map/MapCanvas.tsx`](components/Map/MapCanvas.tsx), [`components/Map/LocationCard.tsx`](components/Map/LocationCard.tsx) | [`map-credit.spec.ts`](tests/unit/access/map-credit.spec.ts), a check of the source text; the picture above is the rendered result |
 | Reads go through one gate that checks the caller again | [`lib/demo/gate.ts`](lib/demo/gate.ts), [`app/api/_lib/live-access.ts`](app/api/_lib/live-access.ts) | [`gate.spec.ts`](tests/unit/access/gate.spec.ts), [`live-access.spec.ts`](tests/unit/access/live-access.spec.ts) |
 | The demo screen offers no control that writes, and place search is closed | [`components/Map/MapCanvas.tsx`](components/Map/MapCanvas.tsx), [`app/api/geocode/route.ts`](app/api/geocode/route.ts) | [`demo-surface.spec.ts`](tests/unit/access/demo-surface.spec.ts) |
 | A pull request from a lane branch touches only that lane's files | [`LANES.json`](LANES.json), [`scripts/gates/lane-ownership.mjs`](scripts/gates/lane-ownership.mjs) | CI job `gates` in [`build.yml`](.github/workflows/build.yml) |
@@ -47,12 +50,12 @@ More detail: [SECURITY.md](SECURITY.md), [PRIVACY.md](PRIVACY.md),
 
 Counted from the repository on 2026-10-13.
 
-- 12 unit spec files under `tests/unit/access/` (count of `*.spec.ts` files).
+- 13 unit spec files under `tests/unit/access/` (count of `*.spec.ts` files).
 - 5 CI jobs in 3 workflows under `.github/workflows/`: `build`, `unit` and `gates` in
   `build.yml`, `check` in `no-direct-supabase.yml`, `lock` in `lockfile.yml`.
 - 3 gate scripts in `scripts/gates/` (brand, lane ownership, personal strings). Two of them
   run in CI today.
-- 321 unit tests passed in the `unit` job on `main` at commit `b4d7f08`. The job prints the
+- 327 unit tests passed in the `unit` job on `main` at commit `12c360b`. The job prints the
   count in every CI run.
 - Lighthouse scores: not measured yet.
 

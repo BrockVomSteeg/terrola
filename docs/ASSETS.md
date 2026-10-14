@@ -27,3 +27,9 @@ The twelve demo pictures are named like an uploaded photo (the place's id, then 
 app handles them as it handles real ones. They show no person and hold no text. A test checks
 that each is a plain drawing that loads nothing
 ([`memory-store.spec.ts`](../tests/unit/access/memory-store.spec.ts)).
+
+## Outside `public/`
+
+| file | what it is | source | licence |
+|------|------------|--------|---------|
+| `docs/demo.jpg` | Screenshot of the hosted demo, 1360 by 757, taken on 2026-10-13. Shown in the README | made for this project; the map in it is drawn by Mapbox | The app's own parts: MIT. The map: © Mapbox, © OpenStreetMap, shown with the Mapbox wordmark and attribution button in frame |
