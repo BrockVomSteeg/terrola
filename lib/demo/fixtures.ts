@@ -65,7 +65,7 @@ const SEEDS: readonly Seed[] = [
   {
     title: "Harbour dinner in Cascais",
     date_label: "2025-05-10",
-    description: "Grilled fish by the harbour and a cake carried in by the whole staff.",
+    description: "Grilled fish by the harbour and a long table that filled up as the evening went on.",
     category: "celebration",
     lat: 38.6979,
     lng: -9.4215,
