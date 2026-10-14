@@ -112,14 +112,39 @@ const SEEDS: readonly Seed[] = [
   },
 ];
 
+// The demo's pictures: drawings made in code for this project, kept as files in
+// public/demo/location-photos/ and served by the app itself. Not photographs, and not of
+// real people. A file is named like an uploaded photo, <location id>-<13 digits>.svg.
+// Key: the place's number (1 is the first seed). Value: how many pictures it has.
+const PICTURES: Readonly<Record<number, number>> = {
+  1: 1,
+  4: 1,
+  6: 1,
+  7: 1,
+  8: 1,
+  11: 1,
+};
+const FIRST_STAMP = 1700000000000;
+
+const pictures = (n: number): string[] =>
+  Array.from(
+    { length: PICTURES[n] ?? 0 },
+    (_, k) => `/demo/location-photos/${id(n)}-${FIRST_STAMP + k}.svg`,
+  );
+
 // Newest first, one day apart, so the order is the same on every run.
 const NEWEST = Date.UTC(2025, 9, 1, 12, 0, 0);
 const DAY = 24 * 60 * 60 * 1000;
 
-export const DEMO_LOCATIONS: readonly Location[] = SEEDS.map((seed, index) => ({
-  ...seed,
-  id: id(index + 1),
-  display_order: 0,
-  created_at: new Date(NEWEST - index * DAY).toISOString(),
-  photos: [],
-}));
+export const DEMO_LOCATIONS: readonly Location[] = SEEDS.map((seed, index) => {
+  const photos = pictures(index + 1);
+  return {
+    ...seed,
+    id: id(index + 1),
+    display_order: 0,
+    created_at: new Date(NEWEST - index * DAY).toISOString(),
+    photos,
+    // The cover is the first picture, as it is after an upload.
+    ...(photos.length > 0 ? { photo_url: photos[0] } : {}),
+  };
+});

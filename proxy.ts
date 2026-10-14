@@ -163,11 +163,13 @@ export async function proxy(request: NextRequest) {
 export const config = {
   // Every path except static files. The first entry leaves out the build output
   // (_next/), the dev overlay (__nextjs) and each file in public/ by its full name;
-  // a test walks public/ so a new file cannot be forgotten. The second entry puts the
-  // image optimizer back in: this app does not use it, and it has no row in the list,
-  // so it is refused.
+  // a test walks public/ so a new file cannot be forgotten. The demo's made up pictures
+  // are left out by the shape of their name (<location id>-<digits>.svg in
+  // demo/location-photos/), not by the folder, so anything else under /demo is still
+  // refused here. The second entry puts the image optimizer back in: this app does not
+  // use it, and it has no row in the list, so it is refused.
   matcher: [
-    "/((?!_next/|__nextjs|favicon\\.ico$|manifest\\.json$|icon-192\\.png$|icon-512\\.png$|icon-192\\.svg$|icon-512\\.svg$).*)",
+    "/((?!_next/|__nextjs|favicon\\.ico$|manifest\\.json$|icon-192\\.png$|icon-512\\.png$|icon-192\\.svg$|icon-512\\.svg$|demo/location-photos/[0-9a-f-]+-[0-9]+\\.svg$).*)",
     "/_next/image",
   ],
 };

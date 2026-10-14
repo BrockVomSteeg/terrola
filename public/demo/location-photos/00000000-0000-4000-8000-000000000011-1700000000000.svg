@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="900" viewBox="0 0 1200 900" role="img" aria-label="A painted boat on a canal in front of striped houses">
+  <title>A painted boat on a canal in front of striped houses</title>
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#A9D3E6"/>
+      <stop offset="1" stop-color="#EAF3F1"/>
+    </linearGradient>
+    <linearGradient id="canal" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#5D9FB3"/>
+      <stop offset="1" stop-color="#2F6F86"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="900" fill="url(#sky)"/>
+  <circle cx="1030" cy="120" r="56" fill="#FBE3A1"/>
+  <g>
+    <path d="M60 250 L180 170 L300 250 L300 520 L60 520 Z" fill="#FFFDF8"/>
+    <g fill="#C8553D">
+      <rect x="84" y="250" width="24" height="270"/>
+      <rect x="132" y="250" width="24" height="270"/>
+      <rect x="204" y="250" width="24" height="270"/>
+      <rect x="252" y="250" width="24" height="270"/>
+    </g>
+    <rect x="160" y="400" width="42" height="120" fill="#6B4A2E"/>
+    <path d="M330 270 L450 190 L570 270 L570 520 L330 520 Z" fill="#FFFDF8"/>
+    <g fill="#3F7289">
+      <rect x="330" y="300" width="240" height="24"/>
+      <rect x="330" y="348" width="240" height="24"/>
+      <rect x="330" y="396" width="240" height="24"/>
+      <rect x="330" y="444" width="240" height="24"/>
+      <rect x="330" y="492" width="240" height="24"/>
+    </g>
+    <rect x="428" y="420" width="44" height="100" fill="#FFFDF8"/>
+    <path d="M600 240 L720 160 L840 240 L840 520 L600 520 Z" fill="#FFFDF8"/>
+    <g fill="#E0A63A">
+      <rect x="624" y="240" width="24" height="280"/>
+      <rect x="672" y="240" width="24" height="280"/>
+      <rect x="744" y="240" width="24" height="280"/>
+      <rect x="792" y="240" width="24" height="280"/>
+    </g>
+    <rect x="700" y="400" width="42" height="120" fill="#6B4A2E"/>
+    <path d="M870 280 L990 200 L1110 280 L1110 520 L870 520 Z" fill="#FFFDF8"/>
+    <g fill="#4F8A6B">
+      <rect x="870" y="310" width="240" height="24"/>
+      <rect x="870" y="358" width="240" height="24"/>
+      <rect x="870" y="406" width="240" height="24"/>
+      <rect x="870" y="454" width="240" height="24"/>
+    </g>
+    <rect x="968" y="420" width="44" height="100" fill="#FFFDF8"/>
+  </g>
+  <rect y="516" width="1200" height="34" fill="#CFC5B2"/>
+  <rect y="546" width="1200" height="354" fill="url(#canal)"/>
+  <g fill="#CFE3EA" opacity="0.7">
+    <rect x="90" y="610" width="190" height="6" rx="3"/>
+    <rect x="860" y="640" width="230" height="6" rx="3"/>
+    <rect x="160" y="820" width="260" height="6" rx="3"/>
+    <rect x="760" y="850" width="210" height="6" rx="3"/>
+  </g>
+  <path d="M240 700 Q250 610 190 560 Q320 590 360 700 Z" fill="#C8553D"/>
+  <path d="M240 700 L960 700 Q1010 700 1040 640 L1050 720 Q1000 800 900 800 L330 800 Q260 790 240 700 Z" fill="#2B2A4C"/>
+  <path d="M250 716 L1046 716 L1040 742 L262 742 Z" fill="#F2C24F"/>
+  <path d="M262 742 L1040 742 L1030 762 L276 762 Z" fill="#C8553D"/>
+  <path d="M222 630 Q246 606 268 630 Q246 654 222 630 Z" fill="#F2C24F"/>
+  <g fill="#F6EBD8">
+    <rect x="430" y="676" width="110" height="26" rx="6"/>
+    <rect x="590" y="676" width="110" height="26" rx="6"/>
+    <rect x="750" y="676" width="110" height="26" rx="6"/>
+  </g>
+  <rect x="980" y="560" width="8" height="146" fill="#6B4A2E"/>
+  <path d="M330 800 Q600 830 900 800 L880 826 Q600 850 350 826 Z" fill="#1F4E60" opacity="0.6"/>
+</svg>

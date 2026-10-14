@@ -254,8 +254,75 @@ test.describe("the demo data", () => {
       expect(Number.isNaN(Date.parse(location.created_at)), location.id).toBe(false);
       // Not a leftover of the write tests, which the map hides.
       expect(location.title.startsWith("__pw"), location.id).toBe(false);
-      expect(location.photos).toEqual([]);
-      expect(location.photo_url).toBeUndefined();
+    }
+  });
+
+  // The demo's pictures are files this app serves itself. A picture belongs to the place
+  // whose id it carries, the cover is the first one, and nothing points anywhere else.
+  test("names only its own pictures, served by the app itself", () => {
+    for (const location of DEMO_LOCATIONS) {
+      const photos = location.photos ?? [];
+      for (const url of photos) {
+        expect(url, location.id).toMatch(
+          new RegExp(`^/demo/location-photos/${location.id}-\\d{13}\\.svg$`),
+        );
+      }
+      expect(new Set(photos).size, location.id).toBe(photos.length);
+      expect(location.photo_url, location.id).toBe(photos[0]);
+      // No field the live store fills from Supabase.
+      expect(location.photo_thumb_url, location.id).toBeUndefined();
+      expect(location.photo_card_url, location.id).toBeUndefined();
+      expect(location.photo_lqips, location.id).toBeUndefined();
+      expect(location.cover_lqip, location.id).toBeUndefined();
+    }
+    expect(DEMO_LOCATIONS.some((location) => (location.photos ?? []).length > 0)).toBe(true);
+  });
+
+  test("every picture it names is a file in public/, and no file there is unused", () => {
+    const dir = path.join(process.cwd(), "public", "demo", "location-photos");
+    const named = DEMO_LOCATIONS.flatMap((location) => location.photos ?? [])
+      .map((url) => url.slice("/demo/location-photos/".length))
+      .sort();
+    expect(fs.readdirSync(dir).sort()).toEqual(named);
+  });
+
+  // A picture is a drawing and nothing more: it has a size (the photo frame waits for
+  // one), it runs no script and it loads nothing, from this site or any other.
+  test("a picture is a plain drawing that loads nothing", () => {
+    const dir = path.join(process.cwd(), "public", "demo", "location-photos");
+    for (const file of fs.readdirSync(dir)) {
+      const svg = fs.readFileSync(path.join(dir, file), "utf8");
+      expect(svg.startsWith("<svg "), file).toBe(true);
+      expect(svg, file).toMatch(/^<svg [^>]*\swidth="1200"/);
+      expect(svg, file).toMatch(/^<svg [^>]*\sheight="900"/);
+      expect(svg, file).toMatch(/^<svg [^>]*\sviewBox="0 0 1200 900"/);
+      const lower = svg.toLowerCase();
+      for (const banned of [
+        "<script",
+        "<image",
+        "<foreignobject",
+        "<use",
+        "<a ",
+        "<style",
+        "href",
+        "@import",
+        "javascript:",
+        "data:",
+        "<!doctype",
+        "<!entity",
+      ]) {
+        expect(lower.includes(banned), `${file}: ${banned}`).toBe(false);
+      }
+      // No event handler attribute such as onload.
+      expect(/\son[a-z]+\s*=/.test(lower), `${file}: event handler`).toBe(false);
+      // The only address is the SVG namespace, and every url() points inside the file.
+      expect(lower.match(/https?:\/\/[^"'\s)]+/g) ?? [], file).toEqual([
+        "http://www.w3.org/2000/svg",
+      ]);
+      expect((lower.match(/url\(/g) ?? []).length, file).toBe(
+        (lower.match(/url\(#/g) ?? []).length,
+      );
+      expect(Buffer.byteLength(svg), file).toBeLessThan(20_000);
     }
   });
 
