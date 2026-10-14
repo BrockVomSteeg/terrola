@@ -5,8 +5,8 @@ Wave 1: the map only. This file says what "done" means. Every rule below is chec
 
 ## 1. What this is
 
-A private, shared map for a small group. Pin places, add photos and notes, see them on a warm,
-hand-drawn style map. Self-hostable on Next.js, Supabase and Mapbox, with an open read-only demo
+A private, shared map for a small group. Pin places, add photos and notes, see them on a map
+with a warm palette. Self-hostable on Next.js, Supabase and Mapbox, with an open read-only demo
 on made-up data. MIT licensed. A portfolio project.
 
 ## 2. Scope
@@ -15,7 +15,7 @@ In wave 1: map, pins, categories and filter, photo upload, reframe, lightbox, ti
 password gate for self-hosting, demo mode, an installable web app, tests a stranger can run,
 docs, CI and security gates.
 
-Out until wave 2: illustrated keepsake scenes, weather and tide facts, real user accounts,
+Out until wave 2: illustrated scenes, weather and tide facts, real user accounts,
 native apps, payments, ads, third party error reporting or analytics.
 
 ## 3. Rules that always hold
@@ -77,9 +77,10 @@ brand, tests, docs, ci. Rebase on `main` before merge.
 
 ## 7. Publishing
 
-The working repository stays private. Publishing means pushing one squashed snapshot to a new
-public repository after every gate is green and PR text, workflow logs and artifacts have been
-scanned. The owner decides when.
+This repository is published as it is, with its full history: the pull requests, their CI runs
+and their review records are the evidence. Before it is made public every gate is green and the
+files, the whole history, PR text, workflow logs and artifacts have been scanned. The owner
+decides when.
 
 ## 8. Autonomy
 
@@ -108,8 +109,8 @@ Ads, payments, paid tiers and sponsor links need the owner first (`CLAUDE.md`).
   does not go in.
 - Numbers: counted by the docs lane from CI output (test count, number of gates, the R13
   Lighthouse scores). No workflow writes `README.md` (R10). Proof links are relative links to files
-  in the repository, written before publishing. Links to the public repository's own checks are
-  added in the private repository and go out with the next snapshot the owner approves.
+  in the repository, written before publishing. Links to the repository's own pull requests and
+  checks are relative links that work once the repository is public.
 - Picture or video: made from the hosted demo (made up data, `E2E_BASE` set to its address so the
   real map tiles show) by a CI Playwright run or by the owner, never from a live instance, with
   the Mapbox logo and attribution in frame (R11). It lives under `docs/` (docs lane); anything
