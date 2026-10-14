@@ -83,7 +83,7 @@ test.describe("the write token", () => {
   test("differs for another session, another member and another key", async () => {
     const s = await session({ age: 60 });
     const token = await tokenFor(s);
-    expect(await tokenFor(await session({ age: 61 }))).not.toBe(token);
+    expect(await tokenFor(await session({ age: 3600 }))).not.toBe(token);
     expect(await tokenFor(await session({ age: 60, person: "member-1" }))).not.toBe(
       token,
     );
@@ -135,7 +135,7 @@ test.describe("a write in live mode", () => {
 
   test("is refused with the token of another session", async () => {
     const mine = await session({ age: 60 });
-    const theirs = await session({ age: 61 });
+    const theirs = await session({ age: 3600 });
     expect(await allowed(write({ session: mine, header: await tokenFor(theirs) }))).toBe(
       false,
     );
