@@ -398,6 +398,8 @@ test.describe("the matcher", () => {
       "/demo/location-photos/00000000-0000-4000-8000-000000000001-1700000000000.png",
       "/demo/location-photos/00000000-0000-4000-8000-000000000001-1700000000000.svg.html",
       `${picture}/extra`,
+      `${picture}.bak`,
+      "/demo/location-photos/00000000-0000-4000-8000-000000000001-1700000000000.svgz",
       "/demo/other/00000000-0000-4000-8000-000000000001-1700000000000.svg",
       "/api/demo/location-photos/00000000-0000-4000-8000-000000000001-1700000000000.svg",
     ]) {

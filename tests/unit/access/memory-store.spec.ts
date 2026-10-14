@@ -262,6 +262,8 @@ test.describe("the demo data", () => {
   test("names only its own pictures, served by the app itself", () => {
     for (const location of DEMO_LOCATIONS) {
       const photos = location.photos ?? [];
+      // An id is hex and dashes, so it is safe inside the pattern below.
+      expect(location.id).toMatch(/^[0-9a-f-]{36}$/);
       for (const url of photos) {
         expect(url, location.id).toMatch(
           new RegExp(`^/demo/location-photos/${location.id}-\\d{13}\\.svg$`),
@@ -304,6 +306,10 @@ test.describe("the demo data", () => {
         "<use",
         "<a ",
         "<style",
+        // No words in the drawing itself, and nothing that moves.
+        "<text",
+        "<animate",
+        "<set",
         "href",
         "@import",
         "javascript:",
