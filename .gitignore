@@ -49,6 +49,3 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
-
-SECURITY_AUDIT.md
-SECURITY_AUDIT_COMPROMISE_CHECK.md
