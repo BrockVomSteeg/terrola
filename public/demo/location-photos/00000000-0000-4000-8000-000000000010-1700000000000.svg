@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="900" viewBox="0 0 1200 900" role="img" aria-label="A round stone well with a spiral stair among foggy trees">
+  <title>A round stone well with a spiral stair among foggy trees</title>
+  <defs>
+    <linearGradient id="fog" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#DCE6E0"/>
+      <stop offset="1" stop-color="#A9BFAF"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="900" fill="url(#fog)"/>
+  <g fill="#B4C7B8">
+    <path d="M60 620 L140 220 L220 620 Z"/>
+    <path d="M250 620 L340 160 L430 620 Z"/>
+    <path d="M800 620 L890 180 L980 620 Z"/>
+    <path d="M1000 620 L1080 240 L1160 620 Z"/>
+  </g>
+  <g fill="#8FA896">
+    <path d="M0 660 L90 300 L180 660 Z"/>
+    <path d="M150 660 L250 240 L350 660 Z"/>
+    <path d="M880 660 L980 260 L1080 660 Z"/>
+    <path d="M1040 660 L1130 320 L1200 600 L1200 660 Z"/>
+  </g>
+  <rect y="420" width="1200" height="120" fill="#EEF3EE" opacity="0.6"/>
+  <rect y="640" width="1200" height="260" fill="#6F8A6B"/>
+  <path d="M0 640 Q300 600 600 630 T1200 620 L1200 680 L0 680 Z" fill="#7F9A78"/>
+  <ellipse cx="600" cy="640" rx="330" ry="120" fill="#B9AE9A"/>
+  <ellipse cx="600" cy="640" rx="270" ry="94" fill="#3D3F3A"/>
+  <path d="M330 640 Q330 720 600 760 Q870 720 870 640 Q870 734 600 734 Q330 734 330 640 Z" fill="#A69B88"/>
+  <g fill="none" stroke="#CFC5B2" stroke-width="16" stroke-linecap="round">
+    <path d="M370 640 Q600 560 830 640"/>
+    <path d="M420 668 Q600 610 780 668"/>
+    <path d="M470 692 Q600 654 730 692"/>
+    <path d="M520 712 Q600 692 680 712"/>
+  </g>
+  <g fill="#8E8371">
+    <rect x="352" y="560" width="26" height="86" rx="13"/>
+    <rect x="452" y="536" width="26" height="86" rx="13"/>
+    <rect x="587" y="526" width="26" height="86" rx="13"/>
+    <rect x="722" y="536" width="26" height="86" rx="13"/>
+    <rect x="822" y="560" width="26" height="86" rx="13"/>
+  </g>
+  <path d="M340 566 Q600 470 860 566" fill="none" stroke="#B9AE9A" stroke-width="20" stroke-linecap="round"/>
+  <g fill="#4F6F52">
+    <path d="M0 900 L0 760 Q80 700 150 780 Q200 720 260 800 L300 900 Z"/>
+    <path d="M1200 900 L1200 750 Q1120 700 1050 780 Q1000 730 940 810 L900 900 Z"/>
+  </g>
+  <g fill="#7A9A6B">
+    <ellipse cx="170" cy="840" rx="90" ry="34"/>
+    <ellipse cx="1030" cy="846" rx="96" ry="36"/>
+  </g>
+  <rect y="0" width="1200" height="200" fill="#EEF3EE" opacity="0.35"/>
+</svg>

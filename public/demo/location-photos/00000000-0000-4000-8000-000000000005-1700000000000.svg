@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="900" viewBox="0 0 1200 900" role="img" aria-label="A path along a granite ridge with a long view over blue hills">
+  <title>A path along a granite ridge with a long view over blue hills</title>
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#8FBFDD"/>
+      <stop offset="1" stop-color="#F1E9D6"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="900" fill="url(#sky)"/>
+  <circle cx="940" cy="150" r="60" fill="#FBE3A1"/>
+  <g fill="#FFFDF8" opacity="0.9">
+    <ellipse cx="300" cy="150" rx="130" ry="26"/>
+    <ellipse cx="390" cy="130" rx="80" ry="24"/>
+    <ellipse cx="700" cy="230" rx="90" ry="18"/>
+  </g>
+  <path d="M0 470 L160 400 L330 450 L520 380 L700 440 L880 390 L1060 440 L1200 410 L1200 620 L0 620 Z" fill="#B7CEDD"/>
+  <path d="M0 540 L200 470 L400 530 L620 460 L820 520 L1000 480 L1200 520 L1200 680 L0 680 Z" fill="#8FB0C4"/>
+  <path d="M0 620 L240 560 L480 610 L720 560 L960 600 L1200 570 L1200 760 L0 760 Z" fill="#6A8FA6"/>
+  <path d="M0 900 L0 640 L140 560 L300 520 L470 560 L620 500 L760 560 L900 640 L1040 700 L1200 720 L1200 900 Z" fill="#A6A096"/>
+  <path d="M140 560 L300 520 L470 560 L400 640 L220 660 Z" fill="#BDB7AB"/>
+  <path d="M620 500 L760 560 L900 640 L760 680 L640 620 Z" fill="#8E887E"/>
+  <path d="M0 900 L0 760 L200 720 L420 760 L640 720 L860 770 L1200 800 L1200 900 Z" fill="#8A9A63"/>
+  <path d="M560 900 Q600 800 520 740 Q460 700 520 640 Q570 590 600 520" fill="none" stroke="#E8D5B0" stroke-width="26" stroke-linecap="round"/>
+  <g fill="#6F6A61">
+    <path d="M250 700 L330 650 L400 700 L380 740 L270 740 Z"/>
+    <path d="M820 760 L900 700 L990 750 L970 800 L840 800 Z"/>
+    <path d="M90 800 L150 760 L210 800 L190 830 L100 830 Z"/>
+  </g>
+  <g>
+    <rect x="596" y="456" width="10" height="66" fill="#6B4A2E"/>
+    <path d="M606 458 L668 474 L606 492 Z" fill="#C8553D"/>
+  </g>
+  <g fill="#7A9A6B">
+    <ellipse cx="330" cy="790" rx="60" ry="18"/>
+    <ellipse cx="720" cy="830" rx="70" ry="20"/>
+    <ellipse cx="1040" cy="850" rx="80" ry="22"/>
+  </g>
+</svg>
