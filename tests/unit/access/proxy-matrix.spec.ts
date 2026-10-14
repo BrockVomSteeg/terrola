@@ -381,6 +381,32 @@ test.describe("the matcher", () => {
     }
   });
 
+  // Only a file named like a demo picture skips the proxy. The folder itself, any other
+  // name in it and anything hung behind a picture's name still reach the proxy, which
+  // has no row for them and refuses.
+  test("under /demo only a picture's own name is left out", () => {
+    const picture =
+      "/demo/location-photos/00000000-0000-4000-8000-000000000001-1700000000000.svg";
+    expect(runsOn(picture), picture).toBe(false);
+    for (const url of [
+      "/demo",
+      "/demo/",
+      "/demo/location-photos",
+      "/demo/location-photos/",
+      "/demo/location-photos/index.html",
+      "/demo/location-photos/photo.svg",
+      "/demo/location-photos/00000000-0000-4000-8000-000000000001-1700000000000.png",
+      "/demo/location-photos/00000000-0000-4000-8000-000000000001-1700000000000.svg.html",
+      `${picture}/extra`,
+      `${picture}.bak`,
+      "/demo/location-photos/00000000-0000-4000-8000-000000000001-1700000000000.svgz",
+      "/demo/other/00000000-0000-4000-8000-000000000001-1700000000000.svg",
+      "/api/demo/location-photos/00000000-0000-4000-8000-000000000001-1700000000000.svg",
+    ]) {
+      expect(runsOn(url), url).toBe(true);
+    }
+  });
+
   test("every file in public/ is served without the proxy, and is not refused by it", () => {
     const dir = path.join(ROOT, "public");
     const files = walkFiles(dir).map(
