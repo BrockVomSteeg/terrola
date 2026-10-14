@@ -111,12 +111,6 @@ export interface Store {
   ping(): Promise<StoreResult<null>>;
 }
 
-/** The reads and the ping: what the gate hands out today. The writes follow. */
-export type ReadStore = Pick<
-  Store,
-  "listLocations" | "getLocation" | "listPhotos" | "ping"
->;
-
 /** What a caller shows the gate. In live mode the store checks it; a demo ignores it. */
 export type Credential =
   | { kind: "session"; token: string | undefined | null }

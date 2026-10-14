@@ -1,6 +1,11 @@
 import { test, expect } from "@playwright/test";
 import { identify, storeFor } from "@/app/api/_lib/live-access";
-import { ok, type Credential, type ReadStore } from "@/lib/demo/store";
+import {
+  ok,
+  type Credential,
+  type NewLocation,
+  type Store,
+} from "@/lib/demo/store";
 import { COOKIE_MAX_AGE, createSessionToken } from "@/lib/session";
 
 // The second gate (SPEC R17): who may use the live store, and what each caller gets.
@@ -97,21 +102,55 @@ test.describe("who the caller is", () => {
 });
 
 test.describe("what the caller gets", () => {
+  const PLACE: NewLocation = {
+    title: "a",
+    date_label: "b",
+    description: "",
+    category: "everyday",
+    lat: 1,
+    lng: 1,
+  };
+  const NONE = { ok: false, error: { code: "not_found" } } as const;
+
   /** A full store that records every call. */
   function recorder() {
     const calls: string[] = [];
-    const full: ReadStore = {
+    const full: Store = {
       listLocations: async () => {
         calls.push("listLocations");
         return ok([]);
       },
       getLocation: async (id) => {
         calls.push(`getLocation ${id}`);
-        return { ok: false, error: { code: "not_found" } };
+        return NONE;
+      },
+      createLocation: async (input) => {
+        calls.push(`createLocation ${input.title}`);
+        return NONE;
+      },
+      updateLocation: async (id) => {
+        calls.push(`updateLocation ${id}`);
+        return NONE;
+      },
+      deleteLocation: async (id) => {
+        calls.push(`deleteLocation ${id}`);
+        return NONE;
       },
       listPhotos: async (id) => {
         calls.push(`listPhotos ${id}`);
         return ok({ photos: [], thumbs: [], cards: [] });
+      },
+      createPhotoUpload: async (id) => {
+        calls.push(`createPhotoUpload ${id}`);
+        return NONE;
+      },
+      registerPhoto: async (id) => {
+        calls.push(`registerPhoto ${id}`);
+        return NONE;
+      },
+      deletePhoto: async (id) => {
+        calls.push(`deletePhoto ${id}`);
+        return NONE;
       },
       ping: async () => {
         calls.push("ping");
@@ -121,24 +160,48 @@ test.describe("what the caller gets", () => {
     return { calls, full };
   }
 
-  test("a session gets the whole store", async () => {
+  /** Calls every method once, in the order the Store lists them, and keeps the answers. */
+  async function callAll(store: Store) {
+    return [
+      await store.listLocations(),
+      await store.getLocation("a"),
+      await store.createLocation(PLACE),
+      await store.updateLocation("a", { title: "c" }),
+      await store.deleteLocation("a"),
+      await store.listPhotos("a"),
+      await store.createPhotoUpload("a"),
+      await store.registerPhoto("a", "a-1.jpg"),
+      await store.deletePhoto("a", "a-1.jpg"),
+    ];
+  }
+
+  test("a session gets the whole store, writes included", async () => {
     const { calls, full } = recorder();
     const store = storeFor("session", full);
-    expect((await store.listLocations()).ok).toBe(true);
-    await store.getLocation("a");
-    await store.listPhotos("a");
+    await callAll(store);
     await store.ping();
-    expect(calls).toEqual(["listLocations", "getLocation a", "listPhotos a", "ping"]);
+    expect(calls).toEqual([
+      "listLocations",
+      "getLocation a",
+      "createLocation a",
+      "updateLocation a",
+      "deleteLocation a",
+      "listPhotos a",
+      "createPhotoUpload a",
+      "registerPhoto a",
+      "deletePhoto a",
+      "ping",
+    ]);
   });
 
-  test("the scheduler gets the ping and no data", async () => {
+  test("the scheduler gets the ping and nothing else: every read and every write is refused", async () => {
     const { calls, full } = recorder();
     const store = storeFor("cron", full);
     const refusal = { ok: false, error: { code: "unauthorized" } };
-    expect(await store.listLocations()).toEqual(refusal);
-    expect(await store.getLocation("a")).toEqual(refusal);
-    expect(await store.listPhotos("a")).toEqual(refusal);
-    // None of the three reached the real store.
+    const answers = await callAll(store);
+    expect(answers).toHaveLength(9);
+    for (const answer of answers) expect(answer).toEqual(refusal);
+    // None of them reached the real store.
     expect(calls).toEqual([]);
     expect(await store.ping()).toEqual({ ok: true, data: null });
     expect(calls).toEqual(["ping"]);

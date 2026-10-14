@@ -8,13 +8,15 @@
 // handlers; loading it connects to nothing (the database client is made on first
 // use, and a demo has no credentials to make it with).
 //
-// Only the read half is here so far. The write handlers still call the database
-// directly, after the proxy and the write token check; they move behind this store
-// next.
+// The reads and the three location writes are here. The photo write handlers still
+// call the database directly, after the proxy and the write token check; they move
+// behind this store next.
 //
 // The four photo helpers below (storedPhotos, rebuildPhotos,
 // maybePersistRefreshedPhotos, persistPhotos) were moved, unchanged, out of
-// app/api/locations/[id]/photo/route.ts.
+// app/api/locations/[id]/photo/route.ts. The location writes were moved out of
+// app/api/locations/route.ts (POST) and app/api/locations/[id]/route.ts (PATCH,
+// DELETE).
 import {
   getSupabaseAdmin,
   freshenCoverUrls,
@@ -23,14 +25,19 @@ import {
   signThumbsForFiles,
   signCardsForFiles,
   seedPhotoUrlCache,
+  listAllLocationObjects,
 } from "@/lib/supabase-server";
-import { attachCoverLqip, photoFilename } from "@/lib/photos";
+import {
+  attachCoverLqip,
+  photoFilename,
+  photoDerivativeNames,
+} from "@/lib/photos";
 import { filterLiveLocations } from "@/lib/locations";
 import {
   ok,
   refused,
   type Credential,
-  type ReadStore,
+  type Store,
   type StoreResult,
 } from "@/lib/demo/store";
 import type { Location } from "@/types";
@@ -155,7 +162,7 @@ export async function persistPhotos(
 
 // The reads, as the route handlers did them before. A method never throws: a missing
 // credential for the database or a network failure is answered as `failed`.
-const reads: Pick<ReadStore, "listLocations" | "getLocation" | "listPhotos"> = {
+const reads: Pick<Store, "listLocations" | "getLocation" | "listPhotos"> = {
   async listLocations() {
     try {
       const { data, error } = await getSupabaseAdmin()
@@ -222,6 +229,182 @@ const reads: Pick<ReadStore, "listLocations" | "getLocation" | "listPhotos"> = {
   },
 };
 
+// The location writes, as the route handlers did them before. The route has already
+// checked the write token, the rate limit, the id and every field. A method never
+// throws: a missing credential for the database or a network failure is answered as
+// `failed`.
+const locationWrites: Pick<
+  Store,
+  "createLocation" | "updateLocation" | "deleteLocation"
+> = {
+  async createLocation(input) {
+    try {
+      const { data, error } = await getSupabaseAdmin()
+        .from("locations")
+        .insert({
+          title: input.title,
+          date_label: input.date_label,
+          lat: input.lat,
+          lng: input.lng,
+          description: input.description,
+          category: input.category,
+          display_order: 0,
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error("[app] Supabase POST error:", error);
+        return refused("failed");
+      }
+
+      return ok(data as Location);
+    } catch {
+      return refused("failed");
+    }
+  },
+
+  async updateLocation(id, patch) {
+    try {
+      const { photoOrder, ...fields } = patch;
+      const updates: Record<string, unknown> = { ...fields };
+
+      // Reorder: the route has checked that every name belongs to this location.
+      // Reconcile against storage existence, then re-sign server-side and set
+      // cover = photos[0].
+      if (photoOrder !== undefined) {
+        const order = await resolvePhotoOrder(id, photoOrder);
+        const signed = await signPhotoFiles(order);
+        // A storage list that failed reads as "no photos" (listLocationPhotoFiles),
+        // and so does a signing step that failed for every photo. A reorder names
+        // at least one photo, so an empty result here is a failure, never an order:
+        // saving it would erase the location's photos.
+        if (signed.length === 0) return refused("failed");
+        updates.photos = signed;
+        updates.photo_url = signed[0] ?? null;
+      }
+
+      const { data, error } = await getSupabaseAdmin()
+        .from("locations")
+        .update(updates)
+        .eq("id", id)
+        .select()
+        .single();
+
+      if (error || !data) {
+        if (error?.code === "PGRST116") {
+          return refused("not_found");
+        }
+        if (process.env.NODE_ENV !== "production")
+          console.error("[app] Supabase PATCH error:", error);
+        return refused("failed");
+      }
+
+      return ok(data as Location);
+    } catch {
+      return refused("failed");
+    }
+  },
+
+  async deleteLocation(id) {
+    try {
+      // Check if it exists first — and capture its photo set NOW (before the row is
+      // gone) so storage cleanup can purge derivatives from the KNOWN set even if the
+      // live storage listing later fails or returns incomplete.
+      const { data: existing, error: fetchError } = await getSupabaseAdmin()
+        .from("locations")
+        .select("id, photos, photo_url")
+        .eq("id", id)
+        .single();
+
+      if (fetchError || !existing) {
+        return refused("not_found");
+      }
+
+      // The row deletion is AUTHORITATIVE and happens first — it can never be
+      // blocked or reverted by a storage failure (legacy/odd path shapes included).
+      const { error } = await getSupabaseAdmin()
+        .from("locations")
+        .delete()
+        .eq("id", id);
+
+      if (error) {
+        if (process.env.NODE_ENV !== "production")
+          console.error("[app] Supabase DELETE error:", error);
+        return refused("failed");
+      }
+
+      // Best-effort storage cleanup — the row is already gone, so any failure here
+      // (missing objects, legacy paths, a transient storage error) is non-fatal and
+      // must NOT change the result. Purges EVERY tier — the full `<obj>`, its
+      // `<obj>.thumb`, AND its `<obj>.card` — for the cover and all photos[], so no
+      // derivative is ever orphaned in the bucket.
+      try {
+        // Derive the object set from the DB's KNOWN photos (cover + photos[]),
+        // captured above before the delete. `existing.photos` holds signed URLs;
+        // photoFilename() extracts each stable object name. This is robust to a
+        // flaky/empty live listing — the known set is purged regardless.
+        const known = [
+          ...(Array.isArray(existing.photos) ? (existing.photos as unknown[]) : []),
+          existing.photo_url,
+        ]
+          .map((entry) => photoFilename(entry as string | null))
+          .filter((n): n is string => !!n && n.startsWith(id + "-"));
+        const derived = photoDerivativeNames(known);
+
+        // UNION with whatever is actually under this id's prefix in storage — catches
+        // a photo whose bytes reached storage but whose registration never persisted
+        // it into `photos[]`. Isolated in its own try so a listing failure still
+        // removes the derived (known) set.
+        let listed: string[] = [];
+        try {
+          listed = await listAllLocationObjects(id);
+        } catch (listErr) {
+          // Logged in ALL envs (not dev-gated like the route's other error logs):
+          // a swallowed cleanup failure leaves orphaned objects behind, so it must
+          // be observable in production.
+          console.warn(
+            "[app] storage list during delete cleanup failed (non-fatal, possible orphan):",
+            listErr,
+          );
+        }
+
+        // SAFETY: only ever remove objects under THIS location's `id-` prefix, so a
+        // delete can never touch another location's storage objects.
+        const toRemove = Array.from(new Set([...derived, ...listed])).filter((n) =>
+          n.startsWith(id + "-"),
+        );
+        if (toRemove.length) {
+          const { error: removeErr } = await getSupabaseAdmin()
+            .storage.from("location-photos")
+            .remove(toRemove);
+          // Logged in ALL envs — a remove failure leaves orphaned objects behind.
+          if (removeErr)
+            console.warn(
+              "[app] storage cleanup remove failed (non-fatal, possible orphan):",
+              removeErr,
+            );
+        }
+      } catch (cleanupErr) {
+        // Logged in ALL envs — the row is already gone, so this is non-fatal, but a
+        // silent failure here would leave orphaned objects unnoticed.
+        console.warn(
+          "[app] storage cleanup after delete failed (non-fatal, possible orphan):",
+          cleanupErr,
+        );
+      }
+
+      return ok({ id });
+    } catch {
+      return refused("failed");
+    }
+  },
+};
+
+// The photo writes still run in their own routes (photo/route.ts, photo-url/route.ts)
+// and move behind this store next. No route calls these yet, so they refuse.
+const photoWritesNotMovedYet = async () => refused<never>("unsupported");
+
 /** Touches the database. Reports only whether that worked, never why not. */
 async function ping(): Promise<StoreResult<null>> {
   try {
@@ -241,8 +424,17 @@ async function ping(): Promise<StoreResult<null>> {
 export async function openLiveStore(
   credential: Credential,
   env: Env = process.env,
-): Promise<StoreResult<ReadStore>> {
+): Promise<StoreResult<Store>> {
   const caller = await identify(credential, env);
   if (!caller) return refused("unauthorized");
-  return ok(storeFor(caller, { ...reads, ping }));
+  return ok(
+    storeFor(caller, {
+      ...reads,
+      ...locationWrites,
+      createPhotoUpload: photoWritesNotMovedYet,
+      registerPhoto: photoWritesNotMovedYet,
+      deletePhoto: photoWritesNotMovedYet,
+      ping,
+    }),
+  );
 }

@@ -1,5 +1,5 @@
-// The data layer gate (SPEC R17). Every page and route that reads data asks here for
-// a store and gets exactly one of two:
+// The data layer gate (SPEC R17). Every page and route that reads or writes data asks
+// here for a store and gets exactly one of two:
 //
 //   demo  the in-memory store. The gate never opens or calls the live store in a
 //         demo, and a demo has no database credentials to begin with (R3).
@@ -14,7 +14,7 @@ import {
   ok,
   refused,
   type Credential,
-  type ReadStore,
+  type Store,
   type StoreResult,
 } from "./store";
 
@@ -35,13 +35,13 @@ buildCheck();
 export interface GateDeps {
   env?: Env;
   /** How the live store is opened. Tests pass their own; the default loads the real one. */
-  openLive?: (credential: Credential, env: Env) => Promise<StoreResult<ReadStore>>;
+  openLive?: (credential: Credential, env: Env) => Promise<StoreResult<Store>>;
 }
 
 export async function getStore(
   credential: Credential,
   deps: GateDeps = {},
-): Promise<StoreResult<ReadStore>> {
+): Promise<StoreResult<Store>> {
   const env = deps.env ?? process.env;
 
   // Checked on every call, not once: nothing here is cached (R3).

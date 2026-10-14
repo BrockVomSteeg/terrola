@@ -4,7 +4,7 @@
 import {
   refused,
   type Credential,
-  type ReadStore,
+  type Store,
 } from "@/lib/demo/store";
 import { verifySessionToken } from "@/lib/session";
 import { cronAuthorized } from "./cron";
@@ -40,14 +40,20 @@ const notForTheScheduler = async () => refused<never>("unauthorized");
 
 /**
  * The store a caller gets. A session gets all of it. The scheduler may wake the
- * database and nothing else: every data method answers `unauthorized` for it.
+ * database and nothing else: every read and every write answers `unauthorized` for it.
  */
-export function storeFor(caller: LiveCaller, full: ReadStore): ReadStore {
+export function storeFor(caller: LiveCaller, full: Store): Store {
   if (caller === "session") return full;
   return {
     listLocations: notForTheScheduler,
     getLocation: notForTheScheduler,
+    createLocation: notForTheScheduler,
+    updateLocation: notForTheScheduler,
+    deleteLocation: notForTheScheduler,
     listPhotos: notForTheScheduler,
+    createPhotoUpload: notForTheScheduler,
+    registerPhoto: notForTheScheduler,
+    deletePhoto: notForTheScheduler,
     ping: full.ping,
   };
 }
