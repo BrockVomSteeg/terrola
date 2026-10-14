@@ -6,7 +6,7 @@ export const BRAND = {
   slug: "terrola",
   tagline: "A private map of the places you share.",
   description:
-    "A private, shared map for a small group. Pin places, add photos and notes, and see them on a warm, hand-drawn style map.",
+    "A private, shared map for a small group. Pin places, add photos and notes, and see them on a map with a warm palette.",
 } as const;
 
 export type Brand = typeof BRAND;
