@@ -704,7 +704,7 @@ function EmptyState() {
         gap: "10px",
       }}
     >
-      {/* Pin with heart SVG */}
+      {/* Pin SVG */}
       <svg
         width="52"
         height="52"
@@ -719,11 +719,7 @@ function EmptyState() {
           strokeWidth="1.5"
           strokeLinejoin="round"
         />
-        <path
-          d="M26 27C26 27 18.5 21.8 18.5 17C18.5 14.239 20.739 12 23.5 12C24.88 12 26 13.12 26 13.12C26 13.12 27.12 12 28.5 12C31.261 12 33.5 14.239 33.5 17C33.5 21.8 26 27 26 27Z"
-          fill="#C17F5A"
-          opacity="0.65"
-        />
+        <circle cx="26" cy="19" r="5" fill="#C17F5A" opacity="0.65" />
       </svg>
 
       <p
