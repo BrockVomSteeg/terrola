@@ -68,6 +68,69 @@ jobs:
       - name: Unit tests (no browser, no network, no env file)
         run: npm test
 
+  # SPEC R8, the cold clone. It runs the same tests as `unit` above, so on its own it would
+  # add little. What it adds:
+  #   - no npm cache is restored: every package comes from the registry, as on a new machine;
+  #   - it fails when an env file is present, when the Mapbox token is set, or when packages
+  #     are already installed before `npm ci`;
+  #   - it fails when no test passed. Playwright already fails when it finds zero tests, but
+  #     it passes when every test is skipped; this job does not.
+  cold-clone:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Stop if the kill switch is on
+        if: ${{ vars.AUTONOMY_KILL_SWITCH == 'true' }}
+        run: |
+          echo "AUTONOMY_KILL_SWITCH is true"
+          exit 1
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '24'
+
+      # Names only: no file is opened. .env.example is the tracked template and is never loaded.
+      - name: Check that nothing is set up (no env file, no token, no packages)
+        run: |
+          found="$(find . -path ./.git -prune -o -type f -name '.env*' ! -name '.env.example' -print)"
+          if [ -n "$found" ]; then
+            echo "::error::cold-clone: env file found: $found"
+            exit 1
+          fi
+          if [ -n "${NEXT_PUBLIC_MAPBOX_TOKEN:-}" ]; then
+            echo "::error::cold-clone: NEXT_PUBLIC_MAPBOX_TOKEN is set"
+            exit 1
+          fi
+          if [ -e node_modules ]; then
+            echo "::error::cold-clone: node_modules exists before npm ci"
+            exit 1
+          fi
+          echo "cold-clone: no env file, no token, no packages"
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Unit tests, with the results also written to a file
+        run: npm test -- --reporter=list,json
+        env:
+          PLAYWRIGHT_JSON_OUTPUT_FILE: ${{ runner.temp }}/unit-results.json
+
+      # A missing or unreadable results file also fails here.
+      - name: Fail when no test passed (zero tests ran, or every test was skipped)
+        run: |
+          node -e '
+            const { stats } = JSON.parse(require("node:fs").readFileSync(process.argv[1], "utf8"));
+            console.log(`cold-clone: ${stats.expected} passed, ${stats.skipped} skipped, ${stats.unexpected} failed, ${stats.flaky} flaky`);
+            if (!(stats.expected > 0)) {
+              console.error("::error::cold-clone: no test passed (zero tests ran, or every test was skipped)");
+              process.exit(1);
+            }
+          ' "$RUNNER_TEMP/unit-results.json"
+
   gates:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
@@ -90,6 +153,9 @@ jobs:
 
       - name: Brand gate
         run: node scripts/gates/brand.mjs
+
+      - name: Provenance gate
+        run: node scripts/gates/provenance.mjs
 
       # The script and the lane map come from main, never from the pull request,
       # so a pull request cannot edit the gate that judges it.

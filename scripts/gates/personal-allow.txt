@@ -2,3 +2,4 @@
 LICENSE
 CODEOWNERS
 README.md
+.github/ISSUE_TEMPLATE/config.yml
