@@ -74,8 +74,8 @@ still call the database directly, after the proxy and the write token check. In
 `demo-writable` there is no database to call, so a save answers with an error there and
 nothing is kept.
 
-A read in live mode can also write: when a stored photo link has under 3 days left, the read
-signs a new one and saves it back to the same row
+A read in live mode can also write: when a stored photo link has under 3 days left or no
+readable end date, the read signs a new one and saves it back to the same row
 ([`live-store.ts`](app/api/_lib/live-store.ts),
 [`lib/supabase-server.ts`](lib/supabase-server.ts), `freshenCoverUrls`). It writes the two
 photo link columns and nothing else.

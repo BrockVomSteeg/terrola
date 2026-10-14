@@ -38,8 +38,8 @@ still cannot reach real data.
 ## Consequences
 
 A deployment with a 16 to 31 character `SESSION_SECRET` must set a longer one, and everyone
-logs in once more after the key change. Self-hosters can try the app with no secrets at all by
-starting the dev server with `DEMO_MODE=writable`.
+logs in once more after the key change. Self-hosters can look at the app with no secrets at
+all by starting the dev server with `DEMO_MODE=1`.
 
 Keep-alive is checked at the proxy with the cron secret alone, before the signing key is
 looked at. A deployment with a broken `SESSION_SECRET` still keeps its database awake

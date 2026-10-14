@@ -113,10 +113,10 @@ how each change was checked:
 
 - The first commit was made directly. Everything after it came through a pull request with
   CI.
-- PR 1 (the import of the spec and the app) and PR 6 (a spec edit) have CI and no recorded
-  review. The unit test job did not exist yet; PR 7 added it.
-- From PR 7 on, each pull request has an independent review by a different model with fresh
-  context, recorded as a comment on the pull request.
+- PR 1 (the import of the spec and the app) and PR 6 (an edit to the spec and the rules
+  files) have CI and no recorded review. The unit test job did not exist yet; PR 7 added it.
+- From PR 7 on, each merged pull request has an independent review by a different model with
+  fresh context, recorded as a comment on the pull request.
 - The seven pull requests listed under "What is checked" also have a proof run.
 
 This repository does not show a line by line review of the code by a human, and this README
