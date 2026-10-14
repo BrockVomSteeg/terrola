@@ -1305,6 +1305,19 @@ export default function MapCanvas({
         @media (min-width: 1024px) {
           .mapboxgl-ctrl-bottom-left { left: calc(320px + 6px) !important; }
         }
+        /* From 768px up a place's card opens just right of the list, 32px
+           above the bottom edge (LocationCard.tsx). Stacked, the attribution
+           button would end up under it. Side by side, both controls fit in
+           the 32px below the card: 8px from the edge plus 24px of height. */
+        @media (min-width: 768px) {
+          .mapboxgl-ctrl-bottom-left {
+            display: flex !important;
+            align-items: flex-end !important;
+          }
+          .mapboxgl-ctrl-bottom-left .mapboxgl-ctrl {
+            margin: 0 4px 0 0 !important;
+          }
+        }
         @media (min-width: 768px) {
           .header-title { display: none !important; }
           .header-sidebar-spacer { display: flex !important; }
