@@ -3,20 +3,19 @@
 // secret for the ping (live-access.ts). The proxy has already checked; this is the
 // second gate, so a request that slips past the proxy still reaches nothing.
 //
-// The gate never opens or calls this store in a demo. The module itself can still be
-// loaded there, because the photo route imports two helpers from it for its write
-// handlers; loading it connects to nothing (the database client is made on first
-// use, and a demo has no credentials to make it with).
+// The gate never opens or calls this store in a demo, and no route imports this
+// module: the gate loads it, in live mode only. Loading it connects to nothing (the
+// database client is made on first use).
 //
-// The reads and the three location writes are here. The photo write handlers still
-// call the database directly, after the proxy and the write token check; they move
-// behind this store next.
+// Every read and every write of places and photos is here. The route handlers check
+// the write token, the rate limit, the id and every field, then make one store call.
 //
 // The four photo helpers below (storedPhotos, rebuildPhotos,
 // maybePersistRefreshedPhotos, persistPhotos) were moved, unchanged, out of
 // app/api/locations/[id]/photo/route.ts. The location writes were moved out of
 // app/api/locations/route.ts (POST) and app/api/locations/[id]/route.ts (PATCH,
-// DELETE).
+// DELETE). The photo writes were moved out of app/api/locations/[id]/photo/route.ts
+// (POST, DELETE) and app/api/locations/[id]/photo-url/route.ts (POST).
 import {
   getSupabaseAdmin,
   freshenCoverUrls,
@@ -31,6 +30,8 @@ import {
   attachCoverLqip,
   photoFilename,
   photoDerivativeNames,
+  thumbName,
+  cardName,
 } from "@/lib/photos";
 import { filterLiveLocations } from "@/lib/locations";
 import {
@@ -44,6 +45,8 @@ import type { Location } from "@/types";
 import { identify, storeFor } from "./live-access";
 
 type Env = Record<string, string | undefined>;
+
+const BUCKET = "location-photos";
 
 /** Read the persisted (signed-URL) `photos` array for a location. */
 async function storedPhotos(id: string): Promise<string[] | null> {
@@ -64,7 +67,7 @@ async function storedPhotos(id: string): Promise<string[] | null> {
  * (seeded into the signing cache) so an unchanged photo never rotates its
  * `?token=` — that stability is what lets the browser HTTP cache hit.
  */
-export async function rebuildPhotos(
+async function rebuildPhotos(
   id: string,
   ensureName?: string,
 ): Promise<{
@@ -142,7 +145,7 @@ function maybePersistRefreshedPhotos(
 }
 
 /** Persist photo_url + photos with one retry (DB transient-error tolerance). */
-export async function persistPhotos(
+async function persistPhotos(
   id: string,
   photo_url: string | null,
   photos: string[],
@@ -401,9 +404,123 @@ const locationWrites: Pick<
   },
 };
 
-// The photo writes still run in their own routes (photo/route.ts, photo-url/route.ts)
-// and move behind this store next. No route calls these yet, so they refuse.
-const photoWritesNotMovedYet = async () => refused<never>("unsupported");
+// The photo writes, as the route handlers did them before. The route has already
+// checked the write token, the rate limit, the id and the request. A method never
+// throws: a failure is answered as `failed`, and the reason is never passed on.
+const photoWrites: Pick<
+  Store,
+  "createPhotoUpload" | "registerPhoto" | "deletePhoto"
+> = {
+  async createPhotoUpload(id) {
+    try {
+      const filename = `${id}-${Date.now()}.jpg`;
+      const { data, error } = await getSupabaseAdmin()
+        .storage.from(BUCKET)
+        .createSignedUploadUrl(filename);
+
+      if (error || !data) {
+        return refused("failed");
+      }
+
+      // A second signed upload URL for this photo's thumbnail (`<filename>.thumb`),
+      // so the browser can PUT the small cover thumbnail it generates alongside the
+      // original — no extra round-trip. Best-effort: if it fails, the client simply
+      // skips the thumbnail (the full image is the fallback everywhere).
+      const { data: thumbData } = await getSupabaseAdmin()
+        .storage.from(BUCKET)
+        .createSignedUploadUrl(thumbName(filename));
+
+      // A third signed upload URL for this photo's card-tier image (`<filename>.card`),
+      // the ~1152px sharp derivative the map card renders. Best-effort like the thumb:
+      // a failure leaves no card image and the full photo is the fallback.
+      const { data: cardData } = await getSupabaseAdmin()
+        .storage.from(BUCKET)
+        .createSignedUploadUrl(cardName(filename));
+
+      return ok({
+        signedUrl: data.signedUrl,
+        token: data.token,
+        path: data.path,
+        thumbSignedUrl: thumbData?.signedUrl ?? null,
+        thumbToken: thumbData?.token ?? null,
+        thumbPath: thumbData?.path ?? null,
+        cardSignedUrl: cardData?.signedUrl ?? null,
+        cardToken: cardData?.token ?? null,
+        cardPath: cardData?.path ?? null,
+      });
+    } catch {
+      return refused("failed");
+    }
+  },
+
+  // The file was uploaded directly to Supabase Storage by the browser. The route has
+  // checked that `path` is in this location's namespace (IDOR guard).
+  async registerPhoto(id, path) {
+    try {
+      // Give storage a moment to make the just-PUT object listable.
+      await new Promise((r) => setTimeout(r, 300));
+      const ensureName = path.split("/").pop() ?? path;
+      const { photo_url, photos, thumbs, cards } = await rebuildPhotos(
+        id,
+        ensureName,
+      );
+      const saved = await persistPhotos(id, photo_url, photos);
+      if (!saved) {
+        return refused("failed");
+      }
+      return ok({ photo_url, photos, thumbs, cards });
+    } catch {
+      return refused("failed");
+    }
+  },
+
+  // `safeName` is undefined for "the cover". Otherwise the route has stripped any
+  // query string and every character outside [a-zA-Z0-9._-]; "" names nothing.
+  async deletePhoto(id, safeName) {
+    try {
+      if (safeName !== undefined) {
+        // IDOR guard: only objects in this location's namespace are removable.
+        // Remove the photo AND its `.thumb` + `.card` siblings (missing-object
+        // removal is a harmless no-op in Supabase Storage).
+        if (safeName && safeName.startsWith(id + "-")) {
+          await getSupabaseAdmin()
+            .storage.from(BUCKET)
+            .remove([safeName, thumbName(safeName), cardName(safeName)]);
+        }
+      } else {
+        // Backward compat: remove file referenced by photo_url in DB
+        const { data: existing } = await getSupabaseAdmin()
+          .from("locations")
+          .select("photo_url")
+          .eq("id", id)
+          .single();
+
+        if (existing?.photo_url) {
+          // Extract just the filename from whatever URL format (signed or public)
+          const urlPath = existing.photo_url.split("?")[0];
+          const storageName = urlPath.split(`/${BUCKET}/`)[1];
+          if (storageName) {
+            await getSupabaseAdmin()
+              .storage.from(BUCKET)
+              .remove([storageName, thumbName(storageName), cardName(storageName)]);
+          }
+        }
+      }
+
+      // Removed object is gone from storage → resolvePhotoOrder drops it. The
+      // removed photo's orphaned `.thumb` + `.card` are cleaned up above (best-effort).
+      const { photo_url, photos, thumbs, cards } = await rebuildPhotos(id);
+      const saved = await persistPhotos(id, photo_url, photos);
+      if (!saved) {
+        return refused("failed");
+      }
+
+      return ok({ photo_url, photos, thumbs, cards });
+    } catch {
+      return refused("failed");
+    }
+  },
+};
 
 /** Touches the database. Reports only whether that worked, never why not. */
 async function ping(): Promise<StoreResult<null>> {
@@ -431,9 +548,7 @@ export async function openLiveStore(
     storeFor(caller, {
       ...reads,
       ...locationWrites,
-      createPhotoUpload: photoWritesNotMovedYet,
-      registerPhoto: photoWritesNotMovedYet,
-      deletePhoto: photoWritesNotMovedYet,
+      ...photoWrites,
       ping,
     }),
   );

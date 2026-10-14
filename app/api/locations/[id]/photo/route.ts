@@ -1,20 +1,14 @@
 export const maxDuration = 30;
 
 import { NextRequest, NextResponse } from "next/server";
-import { getSupabaseAdmin } from "@/lib/supabase-server";
-import { thumbName, cardName } from "@/lib/photos";
 import { checkCsrf } from "@/app/api/_lib/csrf";
 import { checkRateLimit, RATE_LIMITS } from "@/app/api/_lib/rate-limit";
-import { persistPhotos, rebuildPhotos } from "@/app/api/_lib/live-store";
 import { storeError } from "@/app/api/_lib/store-response";
 import { getStore } from "@/lib/demo/gate";
 import { COOKIE_NAME } from "@/lib/session";
 
 const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
-const MAX_BYTES = 10 * 1024 * 1024;
-const BUCKET = "location-photos";
 
 export async function GET(
   request: NextRequest,
@@ -70,112 +64,36 @@ export async function POST(
     return NextResponse.json({ error: "Invalid id format" }, { status: 400 });
   }
 
-  // JSON body: file was uploaded directly to Supabase Storage by the browser.
+  // JSON body only: the file was uploaded directly to Supabase Storage by the
+  // browser. The older upload through the server (multipart) is gone.
   const contentType = request.headers.get("content-type") ?? "";
-  if (contentType.includes("application/json")) {
-    const body = await request.json().catch(() => null);
-    const path: unknown = body?.path;
-    // IDOR guard: the object MUST be in this location's namespace.
-    if (typeof path !== "string" || !path.startsWith(id + "-")) {
-      return NextResponse.json({ error: "Invalid path" }, { status: 400 });
-    }
-    try {
-      // Give storage a moment to make the just-PUT object listable.
-      await new Promise((r) => setTimeout(r, 300));
-      const ensureName = path.split("/").pop() ?? path;
-      const { photo_url, photos, thumbs, cards } = await rebuildPhotos(
-        id,
-        ensureName,
-      );
-      const ok = await persistPhotos(id, photo_url, photos);
-      if (!ok) {
-        return NextResponse.json(
-          { error: "Failed to save photo URL" },
-          { status: 500 },
-        );
-      }
-      return NextResponse.json({ photo_url, photos, thumbs, cards });
-    } catch {
-      return NextResponse.json({ error: "list_failed" }, { status: 500 });
-    }
-  }
-
-  const formData = await request.formData().catch(() => null);
-  if (!formData) {
+  if (!contentType.includes("application/json")) {
     return NextResponse.json(
-      { error: "Request too large or malformed" },
-      { status: 413 },
-    );
-  }
-
-  const file = formData.get("photo");
-  if (!file || !(file instanceof File)) {
-    return NextResponse.json(
-      { error: "photo field required" },
-      { status: 400 },
-    );
-  }
-
-  if (!ALLOWED_TYPES.includes(file.type)) {
-    return NextResponse.json(
-      { error: "Only JPEG, PNG, and WebP images allowed" },
+      { error: "Send JSON with the uploaded path" },
       { status: 415 },
     );
   }
 
-  if (file.size > MAX_BYTES) {
-    return NextResponse.json(
-      { error: "Image must be under 10MB" },
-      { status: 413 },
-    );
+  const body = await request.json().catch(() => null);
+  const path: unknown = body?.path;
+  // IDOR guard: the object MUST be in this location's namespace.
+  if (typeof path !== "string" || !path.startsWith(id + "-")) {
+    return NextResponse.json({ error: "Invalid path" }, { status: 400 });
   }
 
-  const ext =
-    file.type === "image/jpeg"
-      ? "jpg"
-      : file.type === "image/png"
-        ? "png"
-        : file.type === "image/webp"
-          ? "webp"
-          : "heic";
+  // The write goes through the gate (SPEC R17): the demo store in a demo, the live
+  // store, which checks the session itself, in live mode.
+  const store = await getStore({
+    kind: "session",
+    token: request.cookies.get(COOKIE_NAME)?.value,
+  });
+  if (!store.ok)
+    return storeError(store.error.code, "Failed to save photo URL", false);
+  const registered = await store.data.registerPhoto(id, path);
+  if (!registered.ok)
+    return storeError(registered.error.code, "Failed to save photo URL", false);
 
-  const filename = `${id}-${Date.now()}.${ext}`;
-  const arrayBuffer = await file.arrayBuffer();
-  const buffer = new Uint8Array(arrayBuffer);
-
-  const { error: uploadError } = await getSupabaseAdmin()
-    .storage.from(BUCKET)
-    .upload(filename, buffer, {
-      contentType: file.type,
-      upsert: true,
-      // Photo bytes are immutable per object name → cache 1 year (server-side multipart
-      // upload path; the direct browser→Storage path sets the same on its PUT).
-      cacheControl: "31536000",
-    });
-
-  if (uploadError) {
-    if (process.env.NODE_ENV !== "production")
-      console.error("[app] Storage upload error:", uploadError);
-    return NextResponse.json(
-      { error: "Failed to upload photo" },
-      { status: 500 },
-    );
-  }
-
-  const { photo_url, photos, thumbs, cards } = await rebuildPhotos(
-    id,
-    filename,
-  );
-  const ok = await persistPhotos(id, photo_url, photos);
-  if (!ok) {
-    if (process.env.NODE_ENV !== "production")
-      console.error("[app] DB update error after upload");
-    return NextResponse.json(
-      { error: "Failed to save photo URL" },
-      { status: 500 },
-    );
-  }
-
+  const { photo_url, photos, thumbs, cards } = registered.data;
   return NextResponse.json({ photo_url, photos, thumbs, cards });
 }
 
@@ -210,48 +128,29 @@ export async function DELETE(
 
   const rawFilename = request.nextUrl.searchParams.get("filename");
 
+  // No filename (or an empty one) means "the cover", which the store is told as
+  // undefined. A given name is cleaned here and may come out as "", which names
+  // nothing: it never turns into "the cover". The store removes a name only when
+  // it is in this location's namespace (IDOR guard).
+  let safeName: string | undefined;
   if (rawFilename) {
     // Strip query string in case caller passed a signed URL's filename portion
     const filename = rawFilename.split("?")[0];
-    const safeName = filename.replace(/[^a-zA-Z0-9._-]/g, "");
-    // IDOR guard: only objects in this location's namespace are removable.
-    // Remove the photo AND its `.thumb` + `.card` siblings (missing-object
-    // removal is a harmless no-op in Supabase Storage).
-    if (safeName && safeName.startsWith(id + "-")) {
-      await getSupabaseAdmin()
-        .storage.from(BUCKET)
-        .remove([safeName, thumbName(safeName), cardName(safeName)]);
-    }
-  } else {
-    // Backward compat: remove file referenced by photo_url in DB
-    const { data: existing } = await getSupabaseAdmin()
-      .from("locations")
-      .select("photo_url")
-      .eq("id", id)
-      .single();
-
-    if (existing?.photo_url) {
-      // Extract just the filename from whatever URL format (signed or public)
-      const urlPath = existing.photo_url.split("?")[0];
-      const storageName = urlPath.split(`/${BUCKET}/`)[1];
-      if (storageName) {
-        await getSupabaseAdmin()
-          .storage.from(BUCKET)
-          .remove([storageName, thumbName(storageName), cardName(storageName)]);
-      }
-    }
+    safeName = filename.replace(/[^a-zA-Z0-9._-]/g, "");
   }
 
-  // Removed object is gone from storage → resolvePhotoOrder drops it. The
-  // removed photo's orphaned `.thumb` + `.card` are cleaned up above (best-effort).
-  const { photo_url, photos, thumbs, cards } = await rebuildPhotos(id);
-  const ok = await persistPhotos(id, photo_url, photos);
-  if (!ok) {
-    return NextResponse.json(
-      { error: "Failed to update photo" },
-      { status: 500 },
-    );
-  }
+  // The write goes through the gate (SPEC R17): the demo store in a demo, the live
+  // store, which checks the session itself, in live mode.
+  const store = await getStore({
+    kind: "session",
+    token: request.cookies.get(COOKIE_NAME)?.value,
+  });
+  if (!store.ok)
+    return storeError(store.error.code, "Failed to update photo", false);
+  const changed = await store.data.deletePhoto(id, safeName);
+  if (!changed.ok)
+    return storeError(changed.error.code, "Failed to update photo", false);
 
+  const { photos, photo_url, thumbs, cards } = changed.data;
   return NextResponse.json({ photos, photo_url, thumbs, cards });
 }
