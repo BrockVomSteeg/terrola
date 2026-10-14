@@ -17,7 +17,7 @@ tested work (SPEC sections 1 and 9). No money model for now.
 - Public prose (README, docs, UI strings): no em dashes or en dashes.
 
 ## Autonomy contract (owner approved 2026-10-11)
-Act alone: code, docs and tests in this private repo; cloud CI runs; merging into this repo
+Act alone: code, docs and tests in this repo; cloud CI runs; merging into this repo
 after green CI and an independent review.
 
 Ask first, in plain words, with the whole question inside the question box:
