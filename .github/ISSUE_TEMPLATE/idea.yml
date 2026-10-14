@@ -1,0 +1,28 @@
+name: Idea
+description: Suggest a change or a new feature.
+title: "Idea: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the idea. SPEC.md says what is in scope now and what waits for later; a quick look there first helps.
+        A new dependency needs the maintainer's yes first (CONTRIBUTING.md).
+  - type: textarea
+    id: problem
+    attributes:
+      label: What would it help with?
+      description: The problem or the wish, in a few lines.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: What do you suggest?
+    validations:
+      required: true
+  - type: textarea
+    id: other
+    attributes:
+      label: Anything else?
+      description: Other ways you thought of, or links to similar tools.
