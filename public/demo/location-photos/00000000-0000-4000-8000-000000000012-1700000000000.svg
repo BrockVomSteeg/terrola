@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="900" viewBox="0 0 1200 900" role="img" aria-label="A table under a tree above terraced vineyards and a river">
+  <title>A table under a tree above terraced vineyards and a river</title>
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#A9CFE0"/>
+      <stop offset="1" stop-color="#F6E7C6"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="900" fill="url(#sky)"/>
+  <circle cx="200" cy="140" r="62" fill="#FBE3A1"/>
+  <path d="M0 330 L220 250 L460 320 L700 240 L960 310 L1200 260 L1200 520 L0 520 Z" fill="#9DB39A"/>
+  <path d="M0 520 L0 400 Q300 330 600 400 T1200 380 L1200 520 Z" fill="#C2A45A"/>
+  <g fill="none" stroke="#7A8F4A" stroke-width="10">
+    <path d="M0 420 Q300 350 600 420 T1200 400"/>
+    <path d="M0 448 Q300 380 600 448 T1200 428"/>
+    <path d="M0 476 Q300 410 600 476 T1200 456"/>
+    <path d="M0 504 Q300 440 600 504 T1200 484"/>
+  </g>
+  <path d="M0 520 Q300 560 600 530 T1200 540 L1200 620 L0 620 Z" fill="#5D9FB3"/>
+  <path d="M0 600 Q300 640 600 610 T1200 620 L1200 900 L0 900 Z" fill="#B8975A"/>
+  <g fill="none" stroke="#7A8F4A" stroke-width="12">
+    <path d="M0 650 Q300 690 600 660 T1200 670"/>
+    <path d="M0 690 Q300 730 600 700 T1200 710"/>
+  </g>
+  <path d="M0 900 L0 740 Q300 700 600 730 T1200 720 L1200 900 Z" fill="#D9C7A3"/>
+  <rect x="860" y="430" width="34" height="340" fill="#6B4A2E"/>
+  <path d="M877 520 Q820 470 780 480" fill="none" stroke="#6B4A2E" stroke-width="18" stroke-linecap="round"/>
+  <g fill="#4F6F52">
+    <ellipse cx="880" cy="330" rx="240" ry="150"/>
+    <ellipse cx="700" cy="420" rx="150" ry="90"/>
+    <ellipse cx="1060" cy="410" rx="150" ry="100"/>
+  </g>
+  <g fill="#7A9A6B">
+    <ellipse cx="820" cy="290" rx="120" ry="70"/>
+    <ellipse cx="990" cy="340" rx="100" ry="60"/>
+  </g>
+  <g fill="#6B3F6B">
+    <circle cx="760" cy="430" r="12"/>
+    <circle cx="940" cy="420" r="12"/>
+    <circle cx="1040" cy="460" r="12"/>
+  </g>
+  <ellipse cx="560" cy="800" rx="330" ry="40" fill="#C2AE86"/>
+  <path d="M280 690 L840 690 L860 716 L260 716 Z" fill="#FFFDF8"/>
+  <path d="M260 716 L860 716 L850 790 L270 790 Z" fill="#F6EBD8"/>
+  <g fill="#C8553D" opacity="0.8">
+    <rect x="300" y="716" width="40" height="74"/>
+    <rect x="420" y="716" width="40" height="74"/>
+    <rect x="540" y="716" width="40" height="74"/>
+    <rect x="660" y="716" width="40" height="74"/>
+    <rect x="780" y="716" width="40" height="74"/>
+  </g>
+  <g>
+    <ellipse cx="400" cy="700" rx="56" ry="12" fill="#E8D5B0"/>
+    <ellipse cx="720" cy="700" rx="56" ry="12" fill="#E8D5B0"/>
+    <path d="M540 640 L580 640 L576 696 L544 696 Z" fill="#4F6F52"/>
+    <rect x="552" y="606" width="16" height="38" fill="#4F6F52"/>
+    <path d="M610 660 L640 660 L636 694 Q625 700 614 694 Z" fill="#8E2F4A"/>
+    <ellipse cx="400" cy="696" rx="24" ry="6" fill="#D9A066"/>
+    <circle cx="712" cy="694" r="8" fill="#6B3F6B"/>
+    <circle cx="728" cy="696" r="8" fill="#6B3F6B"/>
+  </g>
+  <g fill="#6B4A2E">
+    <rect x="300" y="790" width="14" height="60"/>
+    <rect x="806" y="790" width="14" height="60"/>
+  </g>
+</svg>
