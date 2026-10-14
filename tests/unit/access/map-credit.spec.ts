@@ -48,6 +48,11 @@ test.describe("the Mapbox wordmark and attribution", () => {
     expect(canvas).toContain(
       `@media (min-width: 1024px) {\n          .mapboxgl-ctrl-bottom-left { left: calc(${wide} + 6px) !important; }`,
     );
+    // Same weight as the base rule, so the later one wins: the offsets must come after it.
+    const base = canvas.indexOf("left: 6px !important;");
+    expect(base).toBeGreaterThan(-1);
+    expect(canvas.indexOf(`left: calc(${narrow} + 6px) !important;`)).toBeGreaterThan(base);
+    expect(canvas.indexOf(`left: calc(${wide} + 6px) !important;`)).toBeGreaterThan(base);
   });
 
   test("the list is shown only from 768px up, where the offset applies", () => {
