@@ -1295,6 +1295,16 @@ export default function MapCanvas({
         .mapboxgl-ctrl-bottom-left .mapboxgl-ctrl {
           margin: 0 4px 4px 0 !important;
         }
+        /* From 768px up the list sits on top of the map's left edge (320px
+           wide, 280px below 1024px; see Sidebar.tsx). Move the Mapbox
+           wordmark and attribution out from under it, so they stay in view
+           as the Mapbox terms of service require. */
+        @media (min-width: 768px) and (max-width: 1023px) {
+          .mapboxgl-ctrl-bottom-left { left: calc(280px + 6px) !important; }
+        }
+        @media (min-width: 1024px) {
+          .mapboxgl-ctrl-bottom-left { left: calc(320px + 6px) !important; }
+        }
         @media (min-width: 768px) {
           .header-title { display: none !important; }
           .header-sidebar-spacer { display: flex !important; }
