@@ -8,8 +8,11 @@ workflows, the licence). The rules are in [`SPEC.md`](SPEC.md) and the lane tabl
 section 5.
 
 - One lane, one branch (`lane/<name>`), one pull request.
-- A pull request touches only the files its lane owns. The lane ownership gate fails it
-  otherwise ([`scripts/gates/lane-ownership.mjs`](scripts/gates/lane-ownership.mjs)).
+- A pull request from a lane branch touches only the files its lane owns. The lane ownership
+  gate fails it otherwise
+  ([`scripts/gates/lane-ownership.mjs`](scripts/gates/lane-ownership.mjs)). The gate skips
+  branches named `owner/<topic>` and Dependabot branches, and fails a pull request from any
+  other branch that is not a lane branch.
 - Unit tests for a lane live under `tests/unit/<lane>/`.
 - Protected files change only with the maintainer's review
   ([`CODEOWNERS`](CODEOWNERS)).
@@ -25,8 +28,8 @@ On every pull request to `main` ([`.github/workflows/`](.github/workflows/)):
   ownership gate.
 - `check` in [`no-direct-supabase.yml`](.github/workflows/no-direct-supabase.yml): fails if
   Supabase is imported outside `app/api/*` and `lib/supabase-server.ts`.
-- `lock` in [`lockfile.yml`](.github/workflows/lockfile.yml): runs when `package.json`
-  changes and uploads the resolved lockfile.
+- `lock` in [`lockfile.yml`](.github/workflows/lockfile.yml): runs when `package.json` or
+  that workflow file changes, or when started by hand, and uploads the resolved lockfile.
 
 ## Run the unit tests on a fresh clone
 

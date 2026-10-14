@@ -13,8 +13,9 @@ The demo stores nothing about visitors.
   [test](tests/unit/access/memory-store.spec.ts), "is twelve pins with fixed, distinct ids").
 - The read only demo accepts no writes, so a visitor cannot add anything
   ([`proxy.ts`](proxy.ts), step 2).
-- It sets no cookie. The login route answers 404 in a demo, and the write token is never
-  issued ([`app/api/_lib/login.ts`](app/api/_lib/login.ts),
+- It sets no cookie. A login attempt is refused: the proxy answers 403 to every write in the
+  read only demo, and the login route itself answers 404 in any demo. The write token is never
+  issued ([`proxy.ts`](proxy.ts), [`app/api/_lib/login.ts`](app/api/_lib/login.ts),
   [`app/api/_lib/csrf.ts`](app/api/_lib/csrf.ts);
   [test](tests/unit/access/csrf.spec.ts), "has no token to show").
 - The browser keeps one setting for itself: the chosen map style, in `localStorage` under the
@@ -32,7 +33,10 @@ A copy run in live mode stores, in the owner's own Supabase project:
   display order, creation time, photo links, photo framing and tiny blurred photo
   placeholders ([`supabase/migrations/20260101000000_init.sql`](supabase/migrations/20260101000000_init.sql));
 - a private storage bucket `location-photos` that holds the uploaded photos and two smaller
-  copies of each (same file). The bucket is not public; the app hands out signed links.
+  copies of each (same file). The bucket is not public; the app hands out signed links. A
+  signed link lasts up to 30 days and opens that photo for anyone who has the link, without
+  the password ([`lib/supabase-server.ts`](lib/supabase-server.ts),
+  `SIGNED_READ_TTL_SECONDS`).
 
 In the visitor's browser it sets:
 
@@ -45,10 +49,11 @@ Both last 30 days. The app keeps no list of visitors, no user accounts and no au
 
 ## Third parties a browser talks to
 
-- **Mapbox.** The map loads data, styles and tiles from `api.mapbox.com` and
-  `*.tiles.mapbox.com`, and Mapbox's own telemetry goes to `events.mapbox.com`. The page's
-  Content Security Policy allows these addresses
-  ([`next.config.ts`](next.config.ts), `connect-src`). In live mode the place
+- **Mapbox.** The map is drawn by Mapbox's library in the browser. The page's Content
+  Security Policy allows that library to reach three Mapbox addresses: `api.mapbox.com`,
+  `*.tiles.mapbox.com` and `events.mapbox.com`
+  ([`next.config.ts`](next.config.ts), `connect-src`). This repository shows which addresses
+  are allowed; what the library sends to each is Mapbox's to describe. In live mode the place
   search is sent to Mapbox by the server route
   [`app/api/geocode/route.ts`](app/api/geocode/route.ts), so what a member types in the
   search box reaches Mapbox. In a demo that route answers 404 first, so nothing typed is sent
@@ -72,5 +77,6 @@ No automated gate checks this; it is checked by review.
 
 You are responsible for your own Supabase project settings, your Mapbox token restrictions,
 your host's logs and retention, who you give the password to, and telling your group what is
-stored. The app gives you a private bucket and a locked table; it cannot make your project
-settings safe for you.
+stored. The app gives you a private bucket and a table that is locked against every client
+except the server, whose key bypasses that lock. It cannot make your project settings safe for
+you.

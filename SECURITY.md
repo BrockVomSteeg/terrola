@@ -21,10 +21,11 @@ Each claim below names the file that shows it. Tests live under
 |------|------|-------|--------|
 | `live` | Supabase | one shared password | yes |
 | `demo-readonly` | made up data in memory | none | refused |
-| `demo-writable` | made up data in memory | none | yes, only under the dev server or `NODE_ENV=test` |
+| `demo-writable` | made up data in memory | none | let through by the proxy, but saving fails today |
 
 `demo-writable` is refused on Vercel and anywhere outside the dev server and tests
-([`lib/mode.ts`](lib/mode.ts), `assertRuntime`).
+([`lib/mode.ts`](lib/mode.ts), `assertRuntime`). Saving does not work in it yet: the write
+handlers are not wired to the in memory store (see "The data gate").
 
 ### The demo never runs next to live settings
 
@@ -36,7 +37,8 @@ Demo mode refuses to start when any of these five variables is set:
 - on every request: the first step in [`proxy.ts`](proxy.ts), which answers 503 and names
   variables, never values
 - at build: `buildCheck()` in [`lib/demo/gate.ts`](lib/demo/gate.ts) runs when that module is
-  loaded, and the map page and the data routes import it
+  loaded. The map page, the keep-alive route and the three routes that read places and photos
+  import it; the login, identity, place search and upload address routes do not
   ([test](tests/unit/access/gate.spec.ts), "the build check")
 
 A separate script, [`scripts/check-env.mjs`](scripts/check-env.mjs), is not called by the
@@ -68,7 +70,15 @@ status in one place with no error reason passed on
 ([`store-response.ts`](app/api/_lib/store-response.ts)).
 
 This is half done. The write handlers (POST, PATCH, DELETE on the location and photo routes)
-still call the database directly, after the proxy and the write token check.
+still call the database directly, after the proxy and the write token check. In
+`demo-writable` there is no database to call, so a save answers with an error there and
+nothing is kept.
+
+A read in live mode can also write: when a stored photo link has under 3 days left, the read
+signs a new one and saves it back to the same row
+([`live-store.ts`](app/api/_lib/live-store.ts),
+[`lib/supabase-server.ts`](lib/supabase-server.ts), `freshenCoverUrls`). It writes the two
+photo link columns and nothing else.
 
 ### Place search is closed in a demo
 
@@ -177,15 +187,26 @@ reports and blocks nothing. It allows `'unsafe-inline'` for scripts and styles
 - **One shared password.** Anyone who has it can read and write, and can claim any member
   name. The member name is a label in the cookie, not an identity
   ([`app/api/identity/route.ts`](app/api/identity/route.ts), header comment).
-- **30 day sessions.** A deliberate choice for a family map. It is longer than OWASP suggests
-  for office apps ([`lib/session.ts`](lib/session.ts), `COOKIE_MAX_AGE`).
+- **30 day sessions.** A deliberate choice for a small private group. It is longer than OWASP
+  suggests for office apps ([`lib/session.ts`](lib/session.ts), `COOKIE_MAX_AGE`).
+- **A signed photo link works without the password.** Photos sit in a private bucket and the
+  app hands out signed links that last up to 30 days. Anyone who gets such a link can open
+  that photo until it runs out, with no session
+  ([`lib/supabase-server.ts`](lib/supabase-server.ts), `SIGNED_READ_TTL_SECONDS`).
+- **The server's database key bypasses row level security.** The table has row level security
+  on with no policy, which shuts out every other client. The server itself uses the service
+  key, so the checks in this file are the only thing between a request and the data
+  ([`supabase/migrations/20260101000000_init.sql`](supabase/migrations/20260101000000_init.sql),
+  [`lib/supabase-server.ts`](lib/supabase-server.ts)).
+- **A live read can write a refreshed photo link.** See "The data gate".
 - **No revocation of one session.** Clearing a cookie in a browser does not end a stolen
   copy. Changing the password ends all sessions.
 - **Login limit in memory.** See "Login limits".
 - **CSP is report only.** See "Response headers".
 - **The store gate covers reads only.** The write handlers still call the database
   directly after the proxy and token checks (for example the `POST` in
-  [`app/api/locations/route.ts`](app/api/locations/route.ts)). SPEC R17 is half done.
+  [`app/api/locations/route.ts`](app/api/locations/route.ts)). SPEC R17 is half done, and
+  saving fails in `demo-writable`.
 - **Data route limits trust a forgeable header.** `checkRateLimit` reads `x-forwarded-for`
   as sent by the caller ([`app/api/_lib/rate-limit.ts`](app/api/_lib/rate-limit.ts),
   `getIp`). The login limit does not. Treat the data route limits as light brakes.

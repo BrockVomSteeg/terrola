@@ -53,7 +53,8 @@ looked at. A deployment with a broken `SESSION_SECRET` still keeps its database 
 - Matcher coverage checked with `unstable_doesMiddlewareMatch`.
 - Spies proving no Supabase client and no network call run in demo mode.
 - GET and HEAD return 200 in `demo-readonly`.
-- A build check that the prerender manifest has no `/map` entry.
+- A build check that the prerender manifest has no `/map` entry. Not written yet: no test or
+  CI step does this today.
 - The misconfiguration response names `SESSION_SECRET` and contains no value.
 - Key dependent specs fail in CI instead of skipping.
 
@@ -66,4 +67,5 @@ looked at. A deployment with a broken `SESSION_SECRET` still keeps its database 
   app_csrf cookie"). Also noted: the keep-alive check at the proxy does not depend on the
   session key.
 - 2026-10-13: item 5 is half done. Reads go through `getStore()` (`lib/demo/gate.ts`); the
-  write handlers still call the database directly after the proxy and token checks.
+  write handlers still call the database directly after the proxy and token checks. Until
+  that is finished, saving fails in `demo-writable`, so that mode is for looking at the map.

@@ -57,7 +57,8 @@ OPTIONS gets 403 `demo_read_only`, on any path
 "demo-readonly: no write gets through"). The store also refuses
 ([`memory-store.ts`](../lib/demo/memory-store.ts);
 [`memory-store.spec.ts`](../tests/unit/access/memory-store.spec.ts)). Cannot log in: the
-login route answers 404 ([`login.ts`](../app/api/_lib/login.ts);
+proxy answers 403 `demo_read_only` to the login request like any other write, and the login
+route itself answers 404 in any demo ([`login.ts`](../app/api/_lib/login.ts);
 [`login.spec.ts`](../tests/unit/access/login.spec.ts)). Cannot reach real data, because the
 demo refuses to run next to any of the five live variables
 ([`mode.ts`](../lib/mode.ts); [`mode.spec.ts`](../tests/unit/access/mode.spec.ts)).
@@ -78,7 +79,9 @@ memory ([`login.ts`](../app/api/_lib/login.ts);
 [`login.spec.ts`](../tests/unit/access/login.spec.ts)). That slows a guesser; it does not stop
 one who spreads attempts over instances or time. A long, random shared password is the real
 defence. If `SESSION_SECRET` is missing or short, API routes answer 503 and pages go to the login
-page, except keep-alive ([`proxy.ts`](../proxy.ts), step 6).
+page, except keep-alive ([`proxy.ts`](../proxy.ts), step 6). Can open a photo with no
+password if they get hold of one of its signed links, for as long as the link lasts (up to 30
+days; [`supabase-server.ts`](../lib/supabase-server.ts), `SIGNED_READ_TTL_SECONDS`).
 
 ### 3. A group member with the password
 
@@ -120,6 +123,13 @@ A secret under 16 characters counts as no secret.
 - The data gate (SPEC R17, [`lib/demo/gate.ts`](../lib/demo/gate.ts)) covers reads only. The
   write handlers call the database directly after the proxy and token checks, so a new write
   route that forgot the proxy would not be caught by a second check.
+- For the same reason saving fails in `demo-writable`: the write handlers are not wired to the
+  in memory store.
+- A signed photo link works without a session for up to 30 days, and a live read can save a
+  refreshed link back to its row ([`live-store.ts`](../app/api/_lib/live-store.ts)).
+- The server's database key bypasses row level security, so the checks in the app are the only
+  gate in front of the data
+  ([`supabase-server.ts`](../lib/supabase-server.ts)).
 - Some gates named in SPEC do not exist yet ([`scripts/gates/`](../scripts/gates/)).
 - No audit log. No revocation of a single stolen session.
 - `checkRateLimit` on data routes reads `x-forwarded-for`, which a caller can set
