@@ -1,20 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import {
-  getSupabaseAdmin,
-  resolvePhotoOrder,
-  signPhotoFiles,
-  listAllLocationObjects,
-} from "@/lib/supabase-server";
-import {
-  photoFilename,
-  photoDerivativeNames,
-  MIN_PHOTO_SCALE,
-  MAX_PHOTO_SCALE,
-} from "@/lib/photos";
+import { photoFilename, MIN_PHOTO_SCALE, MAX_PHOTO_SCALE } from "@/lib/photos";
 import { checkCsrf } from "@/app/api/_lib/csrf";
 import { checkRateLimit, RATE_LIMITS } from "@/app/api/_lib/rate-limit";
 import { storeError } from "@/app/api/_lib/store-response";
 import { getStore } from "@/lib/demo/gate";
+import type { LocationPatch } from "@/lib/demo/store";
 import { COOKIE_NAME } from "@/lib/session";
 import type { CategoryKey } from "@/types";
 
@@ -125,7 +115,7 @@ export async function PATCH(
     photos?: unknown;
   };
 
-  const updates: Record<string, unknown> = {};
+  const updates: LocationPatch = {};
 
   if (title !== undefined) {
     const sanitized = String(title).trim().slice(0, 200);
@@ -155,7 +145,7 @@ export async function PATCH(
     if (!VALID_CATEGORIES.includes(category as CategoryKey)) {
       return NextResponse.json({ error: "Invalid category" }, { status: 400 });
     }
-    updates.category = category;
+    updates.category = category as CategoryKey;
   }
 
   if (lat !== undefined) {
@@ -178,16 +168,19 @@ export async function PATCH(
     updates.lng = lng;
   }
 
+  // The two columns are INTEGER: a fraction is refused here, not rounded or failed
+  // by the database.
   if (photo_offset_x !== undefined) {
     if (
       typeof photo_offset_x !== "number" ||
       !Number.isFinite(photo_offset_x) ||
+      !Number.isInteger(photo_offset_x) ||
       photo_offset_x < -500 ||
       photo_offset_x > 500
     ) {
       return NextResponse.json(
         {
-          error: "photo_offset_x must be a finite number between -500 and 500",
+          error: "photo_offset_x must be an integer between -500 and 500",
         },
         { status: 400 },
       );
@@ -199,12 +192,13 @@ export async function PATCH(
     if (
       typeof photo_offset_y !== "number" ||
       !Number.isFinite(photo_offset_y) ||
+      !Number.isInteger(photo_offset_y) ||
       photo_offset_y < -500 ||
       photo_offset_y > 500
     ) {
       return NextResponse.json(
         {
-          error: "photo_offset_y must be a finite number between -500 and 500",
+          error: "photo_offset_y must be an integer between -500 and 500",
         },
         { status: 400 },
       );
@@ -368,8 +362,8 @@ export async function PATCH(
   }
 
   // Reorder: client sends the desired order as storage object names (or signed
-  // URLs). Validate ownership (IDOR), reconcile against storage existence, then
-  // re-sign server-side and set cover = photos[0].
+  // URLs). Validate ownership (IDOR) here; the store reconciles against storage
+  // existence, then re-signs server-side and sets cover = photos[0].
   if (photos !== undefined) {
     // A reorder must list the existing photos; an empty array is never a valid
     // reorder (and must not become a backdoor to clear a location's photos).
@@ -400,10 +394,7 @@ export async function PATCH(
       }
       requested.push(name);
     }
-    const order = await resolvePhotoOrder(id, requested);
-    const signed = await signPhotoFiles(order);
-    updates.photos = signed;
-    updates.photo_url = signed[0] ?? null;
+    updates.photoOrder = requested;
   }
 
   if (Object.keys(updates).length === 0) {
@@ -413,29 +404,19 @@ export async function PATCH(
     );
   }
 
-  const { data, error } = await getSupabaseAdmin()
-    .from("locations")
-    .update(updates)
-    .eq("id", id)
-    .select()
-    .single();
+  // The write goes through the gate (SPEC R17): the demo store in a demo, the live
+  // store, which checks the session itself, in live mode.
+  const store = await getStore({
+    kind: "session",
+    token: request.cookies.get(COOKIE_NAME)?.value,
+  });
+  if (!store.ok)
+    return storeError(store.error.code, "Failed to update location", false);
+  const updated = await store.data.updateLocation(id, updates);
+  if (!updated.ok)
+    return storeError(updated.error.code, "Failed to update location", false);
 
-  if (error || !data) {
-    if (error?.code === "PGRST116") {
-      return NextResponse.json(
-        { error: "Location not found" },
-        { status: 404 },
-      );
-    }
-    if (process.env.NODE_ENV !== "production")
-      console.error("[app] Supabase PATCH error:", error);
-    return NextResponse.json(
-      { error: "Failed to update location" },
-      { status: 500 },
-    );
-  }
-
-  return NextResponse.json(data);
+  return NextResponse.json(updated.data);
 }
 
 export async function DELETE(
@@ -467,94 +448,18 @@ export async function DELETE(
     return NextResponse.json({ error: "Invalid id format" }, { status: 400 });
   }
 
-  // Check if it exists first — and capture its photo set NOW (before the row is
-  // gone) so storage cleanup can purge derivatives from the KNOWN set even if the
-  // live storage listing later fails or returns incomplete.
-  const { data: existing, error: fetchError } = await getSupabaseAdmin()
-    .from("locations")
-    .select("id, photos, photo_url")
-    .eq("id", id)
-    .single();
-
-  if (fetchError || !existing) {
-    return NextResponse.json({ error: "Location not found" }, { status: 404 });
-  }
-
-  // The row deletion is AUTHORITATIVE and happens first — it can never be
-  // blocked or reverted by a storage failure (legacy/odd path shapes included).
-  const { error } = await getSupabaseAdmin()
-    .from("locations")
-    .delete()
-    .eq("id", id);
-
-  if (error) {
-    if (process.env.NODE_ENV !== "production")
-      console.error("[app] Supabase DELETE error:", error);
-    return NextResponse.json(
-      { error: "Failed to delete location" },
-      { status: 500 },
-    );
-  }
-
-  // Best-effort storage cleanup — the row is already gone, so any failure here
-  // (missing objects, legacy paths, a transient storage error) is non-fatal and
-  // must NOT change the result. Purges EVERY tier — the full `<obj>`, its
-  // `<obj>.thumb`, AND its `<obj>.card` — for the cover and all photos[], so no
-  // derivative is ever orphaned in the bucket.
-  try {
-    // Derive the object set from the DB's KNOWN photos (cover + photos[]),
-    // captured above before the delete. `existing.photos` holds signed URLs;
-    // photoFilename() extracts each stable object name. This is robust to a
-    // flaky/empty live listing — the known set is purged regardless.
-    const known = [
-      ...(Array.isArray(existing.photos) ? (existing.photos as unknown[]) : []),
-      existing.photo_url,
-    ]
-      .map((entry) => photoFilename(entry as string | null))
-      .filter((n): n is string => !!n && n.startsWith(id + "-"));
-    const derived = photoDerivativeNames(known);
-
-    // UNION with whatever is actually under this id's prefix in storage — catches
-    // a photo whose bytes reached storage but whose registration never persisted
-    // it into `photos[]`. Isolated in its own try so a listing failure still
-    // removes the derived (known) set.
-    let listed: string[] = [];
-    try {
-      listed = await listAllLocationObjects(id);
-    } catch (listErr) {
-      // Logged in ALL envs (not dev-gated like the route's other error logs):
-      // a swallowed cleanup failure leaves orphaned objects behind, so it must
-      // be observable in production.
-      console.warn(
-        "[app] storage list during delete cleanup failed (non-fatal, possible orphan):",
-        listErr,
-      );
-    }
-
-    // SAFETY: only ever remove objects under THIS location's `id-` prefix, so a
-    // delete can never touch another location's storage objects.
-    const toRemove = Array.from(new Set([...derived, ...listed])).filter((n) =>
-      n.startsWith(id + "-"),
-    );
-    if (toRemove.length) {
-      const { error: removeErr } = await getSupabaseAdmin()
-        .storage.from("location-photos")
-        .remove(toRemove);
-      // Logged in ALL envs — a remove failure leaves orphaned objects behind.
-      if (removeErr)
-        console.warn(
-          "[app] storage cleanup remove failed (non-fatal, possible orphan):",
-          removeErr,
-        );
-    }
-  } catch (cleanupErr) {
-    // Logged in ALL envs — the row is already gone, so this is non-fatal, but a
-    // silent failure here would leave orphaned objects unnoticed.
-    console.warn(
-      "[app] storage cleanup after delete failed (non-fatal, possible orphan):",
-      cleanupErr,
-    );
-  }
+  // The write goes through the gate (SPEC R17): the demo store in a demo, the live
+  // store, which checks the session itself, in live mode. The live store removes the
+  // row first and then, as a best effort, the place's files.
+  const store = await getStore({
+    kind: "session",
+    token: request.cookies.get(COOKIE_NAME)?.value,
+  });
+  if (!store.ok)
+    return storeError(store.error.code, "Failed to delete location", false);
+  const deleted = await store.data.deleteLocation(id);
+  if (!deleted.ok)
+    return storeError(deleted.error.code, "Failed to delete location", false);
 
   return NextResponse.json({ success: true });
 }

@@ -5,7 +5,7 @@ import { storeError } from "@/app/api/_lib/store-response";
 import { DEMO_LOCATIONS } from "@/lib/demo/fixtures";
 import { buildCheck, getStore } from "@/lib/demo/gate";
 import { demoStore } from "@/lib/demo/memory-store";
-import type { Credential, ReadStore, StoreResult } from "@/lib/demo/store";
+import type { Credential, Store, StoreResult } from "@/lib/demo/store";
 
 // The data layer gate (SPEC R17, R3): a demo gets the in-memory store and never even
 // loads the live one; live mode hands the caller's credential to the live store, which
@@ -41,7 +41,7 @@ const CREDENTIALS: Credential[] = [
 ];
 
 /** Stands in for the live store's opener and records every call. */
-function liveOpener(answer: StoreResult<ReadStore> | Error) {
+function liveOpener(answer: StoreResult<Store> | Error) {
   const calls: { credential: Credential; env: Env }[] = [];
   return {
     calls,
@@ -53,7 +53,7 @@ function liveOpener(answer: StoreResult<ReadStore> | Error) {
   };
 }
 
-const FAKE_LIVE: ReadStore = demoStore("demo-readonly");
+const FAKE_LIVE: Store = demoStore("demo-readonly");
 
 test.describe("the gate in a demo", () => {
   for (const [env, mode] of DEMOS) {
@@ -76,6 +76,42 @@ test.describe("the gate in a demo", () => {
     expect(listed?.ok && listed.data.map((l) => l.id)).toEqual(
       DEMO_LOCATIONS.map((l) => l.id),
     );
+  });
+
+  // The gate hands out the whole store, writes included. The read only demo's store
+  // refuses each write itself (SPEC R4); the writable one saves it.
+  test("hands out the writes too: refused in the read only demo, kept in the writable one", async () => {
+    const credential: Credential = { kind: "session", token: undefined };
+    const place = {
+      title: "Gate test place",
+      date_label: "2025-01-01",
+      description: "",
+      category: "everyday" as const,
+      lat: 1,
+      lng: 1,
+    };
+    const fixture = DEMO_LOCATIONS[0].id;
+    const refusal = { ok: false, error: { code: "read_only" } };
+
+    const readOnly = await getStore(credential, { env: { DEMO_MODE: "1" } });
+    expect(readOnly.ok).toBe(true);
+    if (!readOnly.ok) return;
+    expect(await readOnly.data.createLocation(place)).toEqual(refusal);
+    expect(await readOnly.data.updateLocation(fixture, { title: "changed" })).toEqual(refusal);
+    expect(await readOnly.data.deleteLocation(fixture)).toEqual(refusal);
+
+    const writable = await getStore(credential, {
+      env: { DEMO_MODE: "writable", NODE_ENV: "test" },
+    });
+    expect(writable.ok).toBe(true);
+    if (!writable.ok) return;
+    const created = await writable.data.createLocation(place);
+    expect(created.ok && created.data.title).toBe("Gate test place");
+    if (!created.ok) return;
+    expect(await writable.data.deleteLocation(created.data.id)).toEqual({
+      ok: true,
+      data: { id: created.data.id },
+    });
   });
 });
 
@@ -175,11 +211,19 @@ test.describe("a store refusal as an HTTP answer", () => {
       expect(await res.json()).toEqual({ error });
       expect(res.headers.get("cache-control")).toBe("no-store");
     });
+
+    // The write routes keep the headers they always had: no cache header on an error.
+    test(`${code} for a write answers ${status} with the same body and no cache header`, async () => {
+      const res = storeError(code, "Failed to load things", false);
+      expect(res.status).toBe(status);
+      expect(await res.json()).toEqual({ error });
+      expect(res.headers.get("cache-control")).toBeNull();
+    });
   }
 });
 
-// A text check, so it is a tripwire and not a proof: the read paths go through the
-// gate and do not reach for the database themselves.
+// A text check, so it is a tripwire and not a proof: the read paths and the location
+// writes go through the gate and do not reach for the database themselves.
 test.describe("the read paths ask the gate", () => {
   const read = (file: string) => fs.readFileSync(path.join(process.cwd(), file), "utf8");
 
@@ -202,6 +246,23 @@ test.describe("the read paths ask the gate", () => {
       expect(get).toContain("getStore(");
       expect(get).not.toContain("getSupabaseAdmin");
       expect(get).not.toMatch(/supabase/i);
+    });
+  }
+
+  // The location writes go through the gate as well, so these two files are checked
+  // whole: no handler in them reaches for the database client.
+  for (const file of [
+    "app/api/locations/route.ts",
+    "app/api/locations/[id]/route.ts",
+  ]) {
+    test(`every handler in ${file}`, () => {
+      const source = read(file);
+      expect(source).not.toContain("getSupabaseAdmin");
+      expect(source).not.toContain("@/lib/supabase-server");
+      for (const name of ["POST", "PATCH", "DELETE"]) {
+        if (!source.includes(`export async function ${name}(`)) continue;
+        expect(handler(source, name), name).toContain("getStore(");
+      }
     });
   }
 

@@ -4,14 +4,25 @@ import type { StoreErrorCode } from "@/lib/demo/store";
 
 const NO_STORE = { "Cache-Control": "no-store" };
 
-const answer = (error: string, status: number): NextResponse =>
-  NextResponse.json({ error }, { status, headers: NO_STORE });
-
 /**
  * `failedMessage` is the caller's own short sentence for a database or storage
  * failure. The reason itself is never passed on.
+ *
+ * `noStore` adds `Cache-Control: no-store`, which every read answers with. The write
+ * routes pass false: their answers never carried that header, and they keep the
+ * headers they had.
  */
-export function storeError(code: StoreErrorCode, failedMessage: string): NextResponse {
+export function storeError(
+  code: StoreErrorCode,
+  failedMessage: string,
+  noStore = true,
+): NextResponse {
+  const answer = (error: string, status: number): NextResponse =>
+    NextResponse.json(
+      { error },
+      noStore ? { status, headers: NO_STORE } : { status },
+    );
+
   switch (code) {
     case "not_found":
       return answer("Location not found", 404);

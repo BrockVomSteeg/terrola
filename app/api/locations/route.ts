@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSupabaseAdmin } from "@/lib/supabase-server";
 import { isNullIslandCoord } from "@/lib/locations";
 import { checkCsrf } from "@/app/api/_lib/csrf";
 import { checkRateLimit, RATE_LIMITS } from "@/app/api/_lib/rate-limit";
@@ -134,27 +133,24 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const { data, error } = await getSupabaseAdmin()
-    .from("locations")
-    .insert({
-      title: sanitizedTitle,
-      date_label: sanitizedDateLabel,
-      lat,
-      lng,
-      description: sanitizedDescription,
-      category: sanitizedCategory,
-      display_order: 0,
-    })
-    .select()
-    .single();
+  // The write goes through the gate (SPEC R17): the demo store in a demo, the live
+  // store, which checks the session itself, in live mode.
+  const store = await getStore({
+    kind: "session",
+    token: request.cookies.get(COOKIE_NAME)?.value,
+  });
+  if (!store.ok)
+    return storeError(store.error.code, "Failed to save location", false);
+  const created = await store.data.createLocation({
+    title: sanitizedTitle,
+    date_label: sanitizedDateLabel,
+    lat,
+    lng,
+    description: sanitizedDescription,
+    category: sanitizedCategory,
+  });
+  if (!created.ok)
+    return storeError(created.error.code, "Failed to save location", false);
 
-  if (error) {
-    console.error("[app] Supabase POST error:", error);
-    return NextResponse.json(
-      { error: "Failed to save location" },
-      { status: 500 },
-    );
-  }
-
-  return NextResponse.json(data, { status: 201 });
+  return NextResponse.json(created.data, { status: 201 });
 }
