@@ -64,9 +64,11 @@ test.describe("the Mapbox wordmark and attribution", () => {
     const corner = /\.mapboxgl-ctrl-bottom-left \{\s*bottom: calc\((\d+)px \+ env\(safe-area-inset-bottom, 0px\)\) !important;/.exec(
       canvas,
     );
-    const desktopCard = /position: "fixed",\s*bottom: "(\d+)px",\s*left: "max\(336px/.exec(card);
+    // Both card positions carry the same safe area term as the corner, so it cancels out.
+    const desktopCard =
+      /bottom: "calc\((\d+)px \+ env\(safe-area-inset-bottom, 0px\)\)",\s*left: "max\(336px/.exec(card);
     const tabletCard =
-      /@media \(min-width: 768px\) and \(max-width: 1023px\) \{\s*\.location-card \{[^}]*bottom: (\d+)px !important;/.exec(
+      /@media \(min-width: 768px\) and \(max-width: 1023px\) \{\s*\.location-card \{[^}]*bottom: calc\((\d+)px \+ env\(safe-area-inset-bottom, 0px\)\) !important;/.exec(
         card,
       );
     if (!corner || !desktopCard || !tabletCard) throw new Error("a position was not found");

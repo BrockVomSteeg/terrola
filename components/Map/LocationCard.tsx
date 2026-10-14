@@ -316,7 +316,9 @@ export default function LocationCard({
         ref={cardRef}
         style={{
           position: "fixed",
-          bottom: "32px",
+          // The same safe area term as the map's bottom left corner, so the Mapbox
+          // controls keep their room under the card (MapCanvas.tsx).
+          bottom: "calc(32px + env(safe-area-inset-bottom, 0px))",
           left: "max(336px, env(safe-area-inset-left, 0px) + 336px)",
           width: "340px",
           opacity: !visible ? 0 : isDismissing ? 0 : 1,
@@ -682,7 +684,7 @@ export default function LocationCard({
             .location-card {
               left: calc(50% - 190px) !important;
               width: 380px !important;
-              bottom: 32px !important;
+              bottom: calc(32px + env(safe-area-inset-bottom, 0px)) !important;
             }
           }
         `}</style>
