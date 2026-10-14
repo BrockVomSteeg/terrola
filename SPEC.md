@@ -95,7 +95,7 @@ Purpose: a free, open source portfolio project on the owner's public GitHub prof
 careful, tested work: production practices, each with evidence. There is no money model for now.
 Ads, payments, paid tiers and sponsor links need the owner first (`CLAUDE.md`).
 
-- Shape: the public repository (section 7) is the front door. No separate website. The demo is
+- Shape: this repository, once public (section 7), is the front door. No separate website. The demo is
   open and read only, on made up data. Hosting is free on Vercel Hobby; Mapbox is metered past its
   free allowance, so the owner restricts its token to the demo address and sets a usage alert. A
   custom domain is optional and the owner's call.
@@ -119,4 +119,4 @@ Ads, payments, paid tiers and sponsor links need the owner first (`CLAUDE.md`).
   one line of text, no logo or badge, in `README.md` only, never in the demo UI, `lib/brand.ts` or
   the manifest.
 - Licence: MIT. Only the owner changes `LICENSE` (protected in `LANES.json`, listed in
-  `CODEOWNERS`), and only before the public snapshot is pushed.
+  `CODEOWNERS`), and only before the repository is made public.
