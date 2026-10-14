@@ -163,30 +163,6 @@ export const api = {
       body: JSON.stringify({ path }),
     }),
 
-  // POST multipart: legacy upload path going through the server.
-  uploadPhotoMultipart: async (
-    id: string,
-    file: Blob,
-  ): Promise<PhotoSaveResponse> => {
-    const form = new FormData();
-    form.append("photo", file);
-    const csrf = getCsrfToken();
-    const res = await fetch(`/api/locations/${id}/photo`, {
-      method: "POST",
-      credentials: "include",
-      headers: csrf ? { "X-CSRF-Token": csrf } : {},
-      body: form,
-    });
-    if (res.status === 401) {
-      if (!reauthReloadSuppressed && typeof window !== "undefined")
-        window.location.reload();
-      throw new SessionExpiredError();
-    }
-    if (res.status === 403) throw new CsrfError();
-    if (!res.ok) throw new Error(`Photo upload failed: ${res.status}`);
-    return res.json();
-  },
-
   deletePhoto: (id: string, filename: string) =>
     apiFetch<PhotoSaveResponse>(
       `/api/locations/${id}/photo?filename=${encodeURIComponent(filename)}`,

@@ -222,8 +222,8 @@ test.describe("a store refusal as an HTTP answer", () => {
   }
 });
 
-// A text check, so it is a tripwire and not a proof: the read paths and the location
-// writes go through the gate and do not reach for the database themselves.
+// A text check, so it is a tripwire and not a proof: the read paths and the writes
+// go through the gate and do not reach for the database themselves.
 test.describe("the read paths ask the gate", () => {
   const read = (file: string) => fs.readFileSync(path.join(process.cwd(), file), "utf8");
 
@@ -249,16 +249,19 @@ test.describe("the read paths ask the gate", () => {
     });
   }
 
-  // The location writes go through the gate as well, so these two files are checked
-  // whole: no handler in them reaches for the database client.
+  // The writes go through the gate as well, so these four files are checked whole:
+  // no handler in them reaches for the database client or the live store.
   for (const file of [
     "app/api/locations/route.ts",
     "app/api/locations/[id]/route.ts",
+    "app/api/locations/[id]/photo/route.ts",
+    "app/api/locations/[id]/photo-url/route.ts",
   ]) {
     test(`every handler in ${file}`, () => {
       const source = read(file);
       expect(source).not.toContain("getSupabaseAdmin");
       expect(source).not.toContain("@/lib/supabase-server");
+      expect(source).not.toContain("_lib/live-store");
       for (const name of ["POST", "PATCH", "DELETE"]) {
         if (!source.includes(`export async function ${name}(`)) continue;
         expect(handler(source, name), name).toContain("getStore(");

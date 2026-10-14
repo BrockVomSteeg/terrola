@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSupabaseAdmin } from "@/lib/supabase-server";
-import { thumbName, cardName } from "@/lib/photos";
 import { checkCsrf } from "@/app/api/_lib/csrf";
 import { checkRateLimit, RATE_LIMITS } from "@/app/api/_lib/rate-limit";
+import { storeError } from "@/app/api/_lib/store-response";
+import { getStore } from "@/lib/demo/gate";
+import { COOKIE_NAME } from "@/lib/session";
 
 const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const BUCKET = "location-photos";
 
 export async function POST(
   request: NextRequest,
@@ -36,42 +36,29 @@ export async function POST(
     return NextResponse.json({ error: "Invalid id format" }, { status: 400 });
   }
 
-  const filename = `${id}-${Date.now()}.jpg`;
-  const { data, error } = await getSupabaseAdmin()
-    .storage.from(BUCKET)
-    .createSignedUploadUrl(filename);
+  // The write goes through the gate (SPEC R17): the demo store in a demo, which has
+  // no file storage and answers 501, or the live store, which checks the session
+  // itself, in live mode.
+  const store = await getStore({
+    kind: "session",
+    token: request.cookies.get(COOKIE_NAME)?.value,
+  });
+  if (!store.ok)
+    return storeError(store.error.code, "Failed to create upload URL", false);
+  const upload = await store.data.createPhotoUpload(id);
+  if (!upload.ok)
+    return storeError(upload.error.code, "Failed to create upload URL", false);
 
-  if (error || !data) {
-    return NextResponse.json(
-      { error: "Failed to create upload URL" },
-      { status: 500 },
-    );
-  }
-
-  // A second signed upload URL for this photo's thumbnail (`<filename>.thumb`),
-  // so the browser can PUT the small cover thumbnail it generates alongside the
-  // original — no extra round-trip. Best-effort: if it fails, the client simply
-  // skips the thumbnail (the full image is the fallback everywhere).
-  const { data: thumbData } = await getSupabaseAdmin()
-    .storage.from(BUCKET)
-    .createSignedUploadUrl(thumbName(filename));
-
-  // A third signed upload URL for this photo's card-tier image (`<filename>.card`),
-  // the ~1152px sharp derivative the map card renders. Best-effort like the thumb:
-  // a failure leaves no card image and the full photo is the fallback.
-  const { data: cardData } = await getSupabaseAdmin()
-    .storage.from(BUCKET)
-    .createSignedUploadUrl(cardName(filename));
-
+  const u = upload.data;
   return NextResponse.json({
-    signedUrl: data.signedUrl,
-    token: data.token,
-    path: data.path,
-    thumbSignedUrl: thumbData?.signedUrl ?? null,
-    thumbToken: thumbData?.token ?? null,
-    thumbPath: thumbData?.path ?? null,
-    cardSignedUrl: cardData?.signedUrl ?? null,
-    cardToken: cardData?.token ?? null,
-    cardPath: cardData?.path ?? null,
+    signedUrl: u.signedUrl,
+    token: u.token,
+    path: u.path,
+    thumbSignedUrl: u.thumbSignedUrl,
+    thumbToken: u.thumbToken,
+    thumbPath: u.thumbPath,
+    cardSignedUrl: u.cardSignedUrl,
+    cardToken: u.cardToken,
+    cardPath: u.cardPath,
   });
 }
