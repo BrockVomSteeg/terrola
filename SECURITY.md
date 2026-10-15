@@ -21,11 +21,12 @@ Each claim below names the file that shows it. Tests live under
 |------|------|-------|--------|
 | `live` | Supabase | one shared password | yes |
 | `demo-readonly` | made up data in memory | none | refused |
-| `demo-writable` | made up data in memory | none | let through by the proxy, but saving fails today |
+| `demo-writable` | made up data in memory | none | let through by the proxy; places change in memory, photo uploads answer 501 |
 
 `demo-writable` is refused on Vercel and anywhere outside the dev server and tests
-([`lib/mode.ts`](lib/mode.ts), `assertRuntime`). Saving does not work in it yet: the write
-handlers are not wired to the in memory store (see "The data gate").
+([`lib/mode.ts`](lib/mode.ts), `assertRuntime`). In it, adding, editing and removing places
+works in memory. A photo upload answers 501 "not supported in the demo" (see "The data
+gate").
 
 ### The demo never runs next to live settings
 
@@ -56,9 +57,10 @@ The proxy is the first gate, not the only one (see "The data gate").
 
 ### The data gate
 
-Every read goes through `getStore()` in [`lib/demo/gate.ts`](lib/demo/gate.ts): the map page
-([`app/map/page.tsx`](app/map/page.tsx), rendered on every request), the list and single
-location reads, the photo list read and the keep-alive ping. In a demo the gate returns the
+Every read and every write goes through `getStore()` in [`lib/demo/gate.ts`](lib/demo/gate.ts):
+the map page ([`app/map/page.tsx`](app/map/page.tsx), rendered on every request), the list and
+single location reads, place create, edit and delete, the photo list read, photo upload
+address, photo register and photo delete, and the keep-alive ping. In a demo the gate returns the
 in memory store and never opens the live one. In live mode it opens the Supabase store, which
 checks the caller again: a valid session for data, the cron secret for the ping, and the
 scheduler gets the ping and no data
@@ -69,10 +71,10 @@ scheduler gets the ping and no data
 status in one place with no error reason passed on
 ([`store-response.ts`](app/api/_lib/store-response.ts)).
 
-This is half done. The write handlers (POST, PATCH, DELETE on the location and photo routes)
-still call the database directly, after the proxy and the write token check. In
-`demo-writable` there is no database to call, so a save answers with an error there and
-nothing is kept.
+No route file under `app/api/` imports the database client. Only
+[`live-store.ts`](app/api/_lib/live-store.ts) does. The photo upload is a JSON call that
+registers a file the browser already sent to storage; a request that is not JSON gets 415.
+In a demo the store has no file storage, so the upload address and register calls answer 501.
 
 A read in live mode can also write: when a stored photo link has under 3 days left or no
 readable end date, the read signs a new one and saves it back to the same row
@@ -203,17 +205,17 @@ reports and blocks nothing. It allows `'unsafe-inline'` for scripts and styles
   copy. Changing the password ends all sessions.
 - **Login limit in memory.** See "Login limits".
 - **CSP is report only.** See "Response headers".
-- **The store gate covers reads only.** The write handlers still call the database
-  directly after the proxy and token checks (for example the `POST` in
-  [`app/api/locations/route.ts`](app/api/locations/route.ts)). SPEC R17 is half done, and
-  saving fails in `demo-writable`.
+- **A failed storage listing can read as "no photos".** A known gap until the photo reads
+  are reworked ([`live-store.ts`](app/api/_lib/live-store.ts)).
 - **Data route limits trust a forgeable header.** `checkRateLimit` reads `x-forwarded-for`
   as sent by the caller ([`app/api/_lib/rate-limit.ts`](app/api/_lib/rate-limit.ts),
   `getIp`). The login limit does not. Treat the data route limits as light brakes.
 - **Some gates named in SPEC do not exist yet.** [`scripts/gates/`](scripts/gates/) holds the
-  brand, lane ownership and personal strings scripts; the others in SPEC section 3 are not
-  written, and only the first two run in CI
-  ([`.github/workflows/build.yml`](.github/workflows/build.yml)).
+  brand, lane ownership, personal strings and provenance scripts; the others in SPEC section 3 are not
+  written. Brand, lane ownership and provenance run in CI; personal strings does not
+  ([`.github/workflows/build.yml`](.github/workflows/build.yml)). Two more CI jobs help: `cold-clone`
+  (a fresh install that fails if an env file exists, the Mapbox token is set, or no test
+  passed) and GitHub code scanning (CodeQL).
 - **`scripts/check-env.mjs` is not part of the build.** See "The demo never runs next to
   live settings".
 - **No audit log.** Nothing records who changed what.

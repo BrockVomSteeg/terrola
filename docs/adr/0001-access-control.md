@@ -69,3 +69,7 @@ looked at. A deployment with a broken `SESSION_SECRET` still keeps its database 
 - 2026-10-13: item 5 is half done. Reads go through `getStore()` (`lib/demo/gate.ts`); the
   write handlers still call the database directly after the proxy and token checks. Until
   that is finished, saving fails in `demo-writable`, so that mode is for looking at the map.
+- 2026-10-14: item 5 now covers writes. Place create, edit and delete, and photo upload
+  address, register and delete go through `getStore()` and the `Store`, as reads do. In
+  `demo-writable`, places change in memory and photo uploads answer 501. The note above is
+  kept as history.

@@ -33,9 +33,10 @@ under [`tests/unit/access/`](tests/unit/access/).
 | The demo's data is made up and held in memory | [`lib/demo/fixtures.ts`](lib/demo/fixtures.ts), [`lib/demo/memory-store.ts`](lib/demo/memory-store.ts) | [`memory-store.spec.ts`](tests/unit/access/memory-store.spec.ts) |
 | The demo's photos are plain JPEGs with no metadata that the app serves itself, and nothing else under `/demo` skips the proxy | [`public/demo/location-photos/`](public/demo/location-photos/), [`proxy.ts`](proxy.ts) | [`memory-store.spec.ts`](tests/unit/access/memory-store.spec.ts), [`proxy-matrix.spec.ts`](tests/unit/access/proxy-matrix.spec.ts) |
 | The Mapbox wordmark and attribution are not under the list or an open place card | [`components/Map/MapCanvas.tsx`](components/Map/MapCanvas.tsx), [`components/Map/LocationCard.tsx`](components/Map/LocationCard.tsx) | [`map-credit.spec.ts`](tests/unit/access/map-credit.spec.ts), a check of the source text; the picture above is the rendered result |
-| Reads go through one gate that checks the caller again | [`lib/demo/gate.ts`](lib/demo/gate.ts), [`app/api/_lib/live-access.ts`](app/api/_lib/live-access.ts) | [`gate.spec.ts`](tests/unit/access/gate.spec.ts), [`live-access.spec.ts`](tests/unit/access/live-access.spec.ts) |
+| Reads and writes go through one gate that checks the caller again | [`lib/demo/gate.ts`](lib/demo/gate.ts), [`app/api/_lib/live-access.ts`](app/api/_lib/live-access.ts) | [`gate.spec.ts`](tests/unit/access/gate.spec.ts), [`live-access.spec.ts`](tests/unit/access/live-access.spec.ts) |
 | The demo screen offers no control that writes, and place search is closed | [`components/Map/MapCanvas.tsx`](components/Map/MapCanvas.tsx), [`app/api/geocode/route.ts`](app/api/geocode/route.ts) | [`demo-surface.spec.ts`](tests/unit/access/demo-surface.spec.ts) |
 | A pull request from a lane branch touches only that lane's files | [`LANES.json`](LANES.json), [`scripts/gates/lane-ownership.mjs`](scripts/gates/lane-ownership.mjs) | CI job `gates` in [`build.yml`](.github/workflows/build.yml) |
+| Every file under `public/` is listed in [`docs/ASSETS.md`](docs/ASSETS.md) | [`scripts/gates/provenance.mjs`](scripts/gates/provenance.mjs) | CI job `gates` in [`build.yml`](.github/workflows/build.yml) |
 
 The tests fail when a rule is removed. Eight pull requests each show this in their description
 with a proof run: CI on a copy with rules weakened on purpose, where the tests for those rules
@@ -52,10 +53,14 @@ More detail: [SECURITY.md](SECURITY.md), [PRIVACY.md](PRIVACY.md),
 Counted from the repository on 2026-10-13.
 
 - 13 unit spec files under `tests/unit/access/` (count of `*.spec.ts` files).
-- 5 CI jobs in 3 workflows under `.github/workflows/`: `build`, `unit` and `gates` in
-  `build.yml`, `check` in `no-direct-supabase.yml`, `lock` in `lockfile.yml`.
-- 3 gate scripts in `scripts/gates/` (brand, lane ownership, personal strings). Two of them
-  run in CI today.
+- 6 CI jobs in 3 workflows under `.github/workflows/`: `build`, `unit`, `cold-clone` and
+  `gates` in `build.yml`, `check` in `no-direct-supabase.yml`, `lock` in `lockfile.yml`. The
+  required checks are `build`, `check`, `unit`, `gates` and `cold-clone`.
+- 4 gate scripts in `scripts/gates/` (brand, lane ownership, personal strings, provenance).
+  Three of them run in CI today: brand, provenance and lane ownership. `cold-clone` installs
+  fresh with no cache and fails if an env file exists, the Mapbox token is set, or no test
+  passed.
+- GitHub code scanning (CodeQL, default setup) and Dependabot security updates are on.
 - 327 unit tests passed in the `unit` job on `main` at commit `12c360b`. The job prints the
   count in every CI run.
 - Lighthouse scores: not measured yet.
@@ -80,9 +85,11 @@ DEMO_MODE=1 npm run dev
 ```
 
 There is also a writable demo mode, `DEMO_MODE=writable`, which runs only under the dev server
-or `NODE_ENV=test`. Saving does not work there yet: the proxy lets a write through, but the
-write handlers still call the database and are not wired to the in memory store, so a save
-fails.
+or `NODE_ENV=test`. Adding, editing and removing places works there, in memory, and is gone
+when the server stops. Photo uploads answer 501 "not supported in the demo".
+
+To use it on a phone, open your own deployment in the phone browser and add it to the home
+screen. Safari: Share, then Add to Home Screen. Chrome on Android: Install app.
 
 For a live copy, create a Supabase project and run
 [`supabase/migrations/20260101000000_init.sql`](supabase/migrations/20260101000000_init.sql).
@@ -101,11 +108,13 @@ From [`SPEC.md`](SPEC.md):
   the free hosting and map services the demo relies on.
 - **Accounts per user.** Deferred to a later wave. Today there is one shared password.
 - **Weather and tide facts, illustrated scenes, native apps.** Deferred to a later wave.
+- **Many maps.** Each map shared with its own group of people, who can all add to it; one
+  person can be in several maps.
 
 Known gaps, listed in [SECURITY.md](SECURITY.md):
 
-- The data gate covers reads only. The write handlers still call the database directly after
-  the proxy and the write token check. One result: saving fails in the writable demo.
+- Some reads write refreshed photo links back to the table, and a failed storage listing can
+  read as "no photos".
 - A signed photo link works without the password for up to 30 days.
 - The Content Security Policy is report only.
 - The data route rate limit trusts a header a caller can set. The login limit does not.
