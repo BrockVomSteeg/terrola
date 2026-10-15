@@ -121,7 +121,8 @@ Known gaps, listed in [SECURITY.md](SECURITY.md):
   cache. See [SECURITY.md](SECURITY.md).
 - A signed photo link works without the password for up to 30 days.
 - The Content Security Policy is report only.
-- The data route rate limit trusts a header a caller can set. The login limit does not.
+- The data route rate limit trusts a header a caller can set. The login limit does not. The
+  public demo also has a host firewall limit per IP address (see [SECURITY.md](SECURITY.md)).
 - Some gates named in `SPEC.md` are not written yet.
 
 ## How it was built
