@@ -92,7 +92,7 @@ export async function POST(
   const body = await request.json().catch(() => null);
   const path: unknown = body?.path;
   // IDOR guard: the path must be exactly a name createPhotoUpload mints for this
-  // place, `<id>-<13 digits>.jpg` (app/api/_lib/live-store.ts). A slash, a
+  // place, `<id>-<13 digits>.jpg` (the live store's createPhotoUpload). A slash, a
   // `.thumb` or `.card` suffix, or another place's id is refused.
   if (!isMintedPhotoName(id, path)) {
     return NextResponse.json({ error: "Invalid path" }, { status: 400 });

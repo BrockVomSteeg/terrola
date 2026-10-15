@@ -139,6 +139,9 @@ async function compressImage(
       const canvas = new OffscreenCanvas(w, h);
       const ctx = canvas.getContext("2d");
       if (ctx) {
+        // JPEG has no transparency: paint white first so a clear PNG does not turn black.
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, w, h);
         ctx.drawImage(bitmap, 0, 0, w, h);
         blob = await canvas.convertToBlob({
           type: "image/jpeg",
@@ -151,6 +154,9 @@ async function compressImage(
       canvas.height = h;
       const ctx = canvas.getContext("2d");
       if (ctx) {
+        // JPEG has no transparency: paint white first so a clear PNG does not turn black.
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, w, h);
         ctx.drawImage(bitmap, 0, 0, w, h);
         blob = await new Promise<Blob | null>((resolve) =>
           canvas.toBlob(resolve, "image/jpeg", qualityJpeg),
