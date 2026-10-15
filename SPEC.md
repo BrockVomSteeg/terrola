@@ -7,7 +7,7 @@ Wave 1: the map only. This file says what "done" means. Every rule below is chec
 
 A private, shared map for a small group. Pin places, add photos and notes, see them on a map
 with a warm palette. Self-hostable on Next.js, Supabase and Mapbox, with an open read-only demo
-on made-up data. MIT licensed. A portfolio project.
+on made-up data. Licensed under MIT or Apache-2.0, at your option. A portfolio project.
 
 ## 2. Scope
 
@@ -34,7 +34,7 @@ native apps, payments, ads, third party error reporting or analytics.
 | R7 | Supply chain: CI installs with `npm ci --ignore-scripts`; a lockfile diff lists every added package and a new dependency needs owner approval; actions pinned by SHA; workflows use least privilege; no `pull_request_target`. | CI |
 | R8 | Cold clone: `git clone`, `npm ci`, `npm test` pass with no env file and no Mapbox token. Zero tests run is a failure. | `unit` job, `cold-clone` job |
 | R9 | Provenance: every file in `public/` is listed in `docs/ASSETS.md` with source and licence. | `scripts/gates/provenance.mjs` |
-| R10 | Ownership: every file has one owner lane (`LANES.json`). A lane PR touches only its files. A lane's unit tests live under `tests/unit/<lane>/` and belong to that lane. Gates, workflows, `CLAUDE.md`, `SPEC.md`, `LANES.json`, `CODEOWNERS` and `LICENSE` change only with owner review. | `scripts/gates/lane-ownership.mjs`, CODEOWNERS |
+| R10 | Ownership: every file has one owner lane (`LANES.json`). A lane PR touches only its files. A lane's unit tests live under `tests/unit/<lane>/` and belong to that lane. Gates, workflows, `CLAUDE.md`, `SPEC.md`, `LANES.json`, `CODEOWNERS`, `LICENSE-MIT` and `LICENSE-APACHE` change only with owner review. | `scripts/gates/lane-ownership.mjs`, CODEOWNERS |
 | R11 | Mapbox terms: the logo and attribution are never hidden, dimmed or scaled below legible. | `scripts/gates/brand.mjs` |
 | R12 | Privacy: no analytics, no session replay, no third party error reporting. `PRIVACY.md` names Mapbox and hosting logs. | review |
 | R13 | Accessibility: text contrast meets WCAG AA. Lighthouse accessibility and best practices at least 90 on the demo, performance at least 70 on the mobile preset, reasons written in `docs/`. | Lighthouse job |
@@ -118,5 +118,7 @@ Ads, payments, paid tiers and sponsor links need the owner first (`CLAUDE.md`).
 - Footer line: if the README links to the owner's other work, the owner supplies the exact line:
   one line of text, no logo or badge, in `README.md` only, never in the demo UI, `lib/brand.ts` or
   the manifest.
-- Licence: MIT. Only the owner changes `LICENSE` (protected in `LANES.json`, listed in
-  `CODEOWNERS`), and only before the repository is made public.
+- Licence: MIT or Apache-2.0, at the user's option (`LICENSE-MIT`, `LICENSE-APACHE`), as the
+  Rust project does. Only the owner changes them (protected in `LANES.json`, listed in
+  `CODEOWNERS`). Changed from MIT alone on 2026-10-14 while the owner was the only author;
+  release v0.1.0 stays MIT. Demo photos, fonts and Mapbox keep their own licences.

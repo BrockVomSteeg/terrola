@@ -1,5 +1,5 @@
 # Files where the owner name appears on purpose (credit lines).
-LICENSE
+LICENSE-MIT
 CODEOWNERS
 README.md
 .github/ISSUE_TEMPLATE/config.yml

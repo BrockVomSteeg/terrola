@@ -3,6 +3,7 @@
 /CLAUDE.md          @BrockVomSteeg
 /LANES.json         @BrockVomSteeg
 /CODEOWNERS         @BrockVomSteeg
-/LICENSE            @BrockVomSteeg
+/LICENSE-MIT        @BrockVomSteeg
+/LICENSE-APACHE     @BrockVomSteeg
 /.github/           @BrockVomSteeg
 /scripts/gates/     @BrockVomSteeg
