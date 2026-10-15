@@ -37,7 +37,6 @@ jobs:
     timeout-minutes: 5
     outputs:
       url: ${{ steps.pick.outputs.url }}
-      ref: ${{ steps.pick.outputs.ref }}
     steps:
       - name: Stop if the kill switch is on
         if: ${{ vars.AUTONOMY_KILL_SWITCH == 'true' }}
@@ -74,7 +73,6 @@ jobs:
             ref="$EVENT_SHA"
           fi
           echo "url=$base" >> "$GITHUB_OUTPUT"
-          echo "ref=$ref" >> "$GITHUB_OUTPUT"
           echo "Checking $base/map with tests from $ref"
 
   axe:
