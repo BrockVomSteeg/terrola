@@ -18,3 +18,10 @@ Licence: SIL Open Font License 1.1, see `app/fonts/quicksand/OFL.txt`
 
 Copyright 2018 The Fraunces Project Authors (https://github.com/undercasetype/Fraunces)
 Licence: SIL Open Font License 1.1, see `app/fonts/fraunces/OFL.txt`
+
+## Mapbox GL JS (npm package `mapbox-gl`)
+
+The map is drawn with Mapbox GL JS, installed from npm. Since version 2 it is not open source: its
+licence is the `LICENSE.txt` inside the package, and use is governed by the Mapbox Terms of
+Service. It is not covered by this repository's MIT licence. Anyone who runs their own copy needs
+their own Mapbox account and access token.
