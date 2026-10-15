@@ -1,6 +1,8 @@
-// The demo's data: made up visits to twelve public places around the world, each one
-// where a free photograph was taken. The titles, dates and words are invented; no real
-// person or real trip is behind them. Ids are fixed so links and tests stay stable.
+// The demo's data: made up visits to eighteen public places, each one where a free
+// photograph was taken. Eleven are spread around the world and seven sit in Kyoto (the
+// cherry blossom walk and six more), so the map also shows what one busy area looks
+// like. The titles, dates and words are invented; no real person or real trip is behind
+// them. Ids are fixed so links and tests stay stable.
 // Every category appears at least once.
 //
 // Import-free apart from types: safe anywhere.
@@ -111,6 +113,54 @@ const SEEDS: readonly Seed[] = [
     lat: 40.9479,
     lng: -4.1167,
   },
+  {
+    title: "Golden Pavilion on a still morning",
+    date_label: "2025-04-03",
+    description: "Not a ripple on the pond, so the temple showed twice. Got there right at opening.",
+    category: "trip",
+    lat: 35.0394,
+    lng: 135.7292,
+  },
+  {
+    title: "Red gate at Fushimi Inari",
+    date_label: "2025-04-04",
+    description: "Climbed through the gates until the city lights came on below.",
+    category: "adventure",
+    lat: 34.967,
+    lng: 135.773,
+  },
+  {
+    title: "Dinner on the river in Pontocho",
+    date_label: "2025-04-04",
+    description: "Lanterns on the water and a table on the deck. Grilled fish and far too much tea.",
+    category: "food",
+    lat: 35.0022,
+    lng: 135.7714,
+  },
+  {
+    title: "Blossom at the Ninna-ji bell tower",
+    date_label: "2025-04-06",
+    description: "Low cherry trees all around the red tower. The petals fell like snow.",
+    category: "everyday",
+    lat: 35.0309,
+    lng: 135.7128,
+  },
+  {
+    title: "Bamboo grove in Arashiyama",
+    date_label: "2025-04-07",
+    description: "Tall green stems creaking in the wind. Early enough to have it almost alone.",
+    category: "everyday",
+    lat: 35.0151,
+    lng: 135.6707,
+  },
+  {
+    title: "Painted pagoda at Kiyomizu-dera",
+    date_label: "2025-04-08",
+    description: "Every beam painted in bright colours. Last stop before the train home.",
+    category: "trip",
+    lat: 34.995,
+    lng: 135.7839,
+  },
 ];
 
 // The demo's pictures: real photographs, one for each place, taken where the place is.
@@ -132,6 +182,12 @@ const PICTURES: Readonly<Record<number, number>> = {
   10: 1,
   11: 1,
   12: 1,
+  13: 1,
+  14: 1,
+  15: 1,
+  16: 1,
+  17: 1,
+  18: 1,
 };
 const FIRST_STAMP = 1700000000000;
 

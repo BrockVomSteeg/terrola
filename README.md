@@ -11,8 +11,9 @@ Demo: <https://terrola.vercel.app>
 
 The hosted demo on 2026-10-15 (UTC). Photo: CC0, from Wikimedia Commons. Map: © Mapbox, © OpenStreetMap.
 
-The demo is open and read only, on made up data: twelve invented visits to real places around
-the world, each with a free public domain photo taken there.
+The demo is open and read only, on made up data: eighteen invented visits to real places, eleven
+around the world and a cluster of seven in Kyoto, each with a free public domain photo taken
+there.
 It has no login and cannot change anything.
 
 ## What is checked
