@@ -132,6 +132,9 @@ A secret under 16 characters counts as no secret.
 - No audit log. No revocation of a single stolen session.
 - `checkRateLimit` on data routes reads `x-forwarded-for`, which a caller can set
   ([`rate-limit.ts`](../app/api/_lib/rate-limit.ts), `getIp`). The login limit does not.
+- The public demo's host firewall limit (600 requests a minute per IP address to `/api/`) is a
+  Vercel dashboard setting that nothing in this repository defines or tests
+  ([SECURITY.md](../SECURITY.md), Known limits).
 
 ## Non goals
 
