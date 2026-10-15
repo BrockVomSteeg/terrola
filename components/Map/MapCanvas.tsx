@@ -510,6 +510,8 @@ export default function MapCanvas({
     const map = new mapboxgl.Map({
       container: mapContainer.current!,
       style: styleUrl,
+      // A flat map, so places on opposite sides of the world are all in view at once.
+      projection: "mercator",
       center: DEFAULT_CENTER,
       zoom: DEFAULT_ZOOM,
       minZoom: 0,
