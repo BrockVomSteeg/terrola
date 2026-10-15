@@ -161,9 +161,7 @@ no cookie.
 The counters live in each server instance's memory. A cold start clears them and each
 instance counts alone. This is a brake, not a lock. A hosted deployment should also use the
 host's own firewall rate limit ([`rate-limit.ts`](app/api/_lib/rate-limit.ts), header
-comment). The public demo does: a Vercel firewall rule lets each IP address make 100
-requests a minute to `/api/` and answers 429 after that (checked on 2026-10-15 UTC: 100 passed,
-the next 10 got 429).
+comment).
 
 ### Passwords over 72 bytes are refused
 
@@ -216,6 +214,14 @@ reports and blocks nothing. It allows `'unsafe-inline'` for scripts and styles
 - **Data route limits trust a forgeable header.** `checkRateLimit` reads `x-forwarded-for`
   as sent by the caller ([`app/api/_lib/rate-limit.ts`](app/api/_lib/rate-limit.ts),
   `getIp`). The login limit does not. Treat the data route limits as light brakes.
+- **The public demo's host limit is a dashboard setting.** A Vercel firewall rule on the demo
+  allows 600 requests per 60 second window per IP address to `/api/`, then answers 429. It
+  lives in the Vercel dashboard, not in this repository, so nothing here tests it. Checked by
+  hand on 2026-10-15 UTC: set to 100, it let 100 requests through and answered 429 to the
+  next 10; set to 600, 110 in a row passed. The 60 second window is the setting shown in the
+  dashboard; when the count resets was not measured. It covers only
+  the read only demo, not your own deployment, and how Vercel counts IPv6 addresses was not
+  checked.
 - **Some gates named in SPEC do not exist yet.** [`scripts/gates/`](scripts/gates/) holds the
   brand, lane ownership, personal strings and provenance scripts; the others in SPEC section 3 are not
   written. Brand, lane ownership and provenance run in CI; personal strings does not
