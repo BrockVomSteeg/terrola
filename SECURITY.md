@@ -218,7 +218,8 @@ reports and blocks nothing. It allows `'unsafe-inline'` for scripts and styles
   allows 600 requests per 60 second window per IP address to `/api/`, then answers 429. It
   lives in the Vercel dashboard, not in this repository, so nothing here tests it. Checked by
   hand on 2026-10-15 UTC: set to 100, it let 100 requests through and answered 429 to the
-  next 10; set to 600, 110 in a row passed. The window length was not measured. It covers only
+  next 10; set to 600, 110 in a row passed. The 60 second window is the setting shown in the
+  dashboard; when the count resets was not measured. It covers only
   the read only demo, not your own deployment, and how Vercel counts IPv6 addresses was not
   checked.
 - **Some gates named in SPEC do not exist yet.** [`scripts/gates/`](scripts/gates/) holds the
