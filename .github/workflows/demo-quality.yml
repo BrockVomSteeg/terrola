@@ -19,9 +19,10 @@ on:
 permissions:
   contents: read
 
-# A newer deployment makes an older check pointless.
+# A newer production deployment makes an older check pointless. Preview deployments get
+# their own group, so their skipped runs never cancel a production check.
 concurrency:
-  group: demo-quality
+  group: demo-quality-${{ github.event.deployment_status.environment || github.event_name }}
   cancel-in-progress: true
 
 jobs:
