@@ -111,8 +111,8 @@ From [`SPEC.md`](SPEC.md):
 - **Accounts per user.** Deferred to a later wave. Today there is one shared password.
 - **Weather and tide facts, illustrated scenes, native apps.** Deferred to a later wave.
 
-Ideas for later: many maps. Each map is shared with its own group of people, who can all add
-to it; one person can be in several maps.
+Ideas for later (trip memories from your photos, many maps) are in
+[`docs/ROADMAP.md`](docs/ROADMAP.md).
 
 Known gaps, listed in [SECURITY.md](SECURITY.md):
 
