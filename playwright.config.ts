@@ -10,7 +10,8 @@ const BASE_URL = process.env.E2E_BASE ?? "http://localhost:3000";
 
 export default defineConfig({
   testDir: "./tests/e2e",
-  testIgnore: ["**/tests/local/**"],
+  // a11y.spec.ts checks the live demo; it runs only with playwright.e2e.config.ts.
+  testIgnore: ["**/tests/local/**", "**/tests/e2e/a11y.spec.ts"],
   timeout: 30_000,
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? "github" : "list",
