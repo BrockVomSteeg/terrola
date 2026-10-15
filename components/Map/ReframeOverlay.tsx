@@ -34,6 +34,8 @@ interface ReframeOverlayProps {
    */
   previewAspect?: number;
   saving?: boolean;
+  /** A short message shown in the editor, such as a failed save. */
+  error?: string | null;
   /** Commit — receives the chosen normalized pan + zoom. */
   onSave: (offset: { x: number; y: number; scale: number }) => void;
   onClose: () => void;
@@ -59,6 +61,7 @@ export default function ReframeOverlay({
   fallbackBg = "#EDE0D0",
   previewAspect = 1.65,
   saving = false,
+  error = null,
   onSave,
   onClose,
 }: ReframeOverlayProps) {
@@ -99,6 +102,18 @@ export default function ReframeOverlay({
     const t = setTimeout(() => setVisible(true), 10);
     return () => clearTimeout(t);
   }, []);
+
+  // Escape closes the editor, like the lightbox. It listens in the capture
+  // phase and stops the key there, so the place card under it stays open.
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      e.stopPropagation();
+      if (!saving) onClose();
+    };
+    window.addEventListener("keydown", handleKey, true);
+    return () => window.removeEventListener("keydown", handleKey, true);
+  }, [onClose, saving]);
 
   // Scroll-wheel zoom (desktop). Attached natively as non-passive so we can
   // preventDefault — React's onWheel is passive and would warn.
@@ -271,6 +286,24 @@ export default function ReframeOverlay({
       >
         Drag to reposition · pinch or scroll to zoom
       </p>
+
+      {error && (
+        <p
+          role="alert"
+          style={{
+            fontFamily: "var(--font-quicksand), sans-serif",
+            fontSize: "13px",
+            color: "#FFF8F0",
+            background: "rgba(194,58,75,0.85)",
+            borderRadius: "100px",
+            padding: "6px 16px",
+            margin: 0,
+            textAlign: "center",
+          }}
+        >
+          {error}
+        </p>
+      )}
 
       <div
         ref={frameRef}

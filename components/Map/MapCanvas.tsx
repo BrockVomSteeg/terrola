@@ -97,6 +97,9 @@ export default function MapCanvas({
   const [pendingCardDeleteId, setPendingCardDeleteId] = useState<string | null>(
     null,
   );
+  // A short note after a card delete the server refused.
+  const [cardNotice, setCardNotice] = useState("");
+  const cardNoticeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [mapStyle, setMapStyle] = useState<"vintage" | "satellite">("vintage");
   // 2D / 3D toggle. Default flat. Pitch is driven only by this toggle, never
   // by a zoom-event handler: setPitch fires zoom, which would re-fire setPitch.
@@ -525,6 +528,8 @@ export default function MapCanvas({
       // AttributionControl renders at bottom-right too, producing two (i)
       // toggle buttons.
       attributionControl: false,
+      // Telemetry off: the library sends no performance metrics (SPEC R12).
+      performanceMetricsCollection: false,
     });
 
     mapRef.current = map;
@@ -556,8 +561,26 @@ export default function MapCanvas({
       window.getSelection()?.removeAllRanges();
     });
 
-    map.on("error", () => {
-      setMapError(true);
+    // Only a fatal start failure replaces the map with the error screen: the
+    // style never loaded, or the token was refused (401 or 403). Anything else,
+    // such as one tile that failed, is logged and the map keeps working.
+    let styleReady = false;
+    map.once("style.load", () => {
+      styleReady = true;
+    });
+    map.on("error", (e) => {
+      const ev = e as unknown as {
+        error?: { status?: number };
+        sourceId?: string;
+      };
+      const status = ev.error?.status;
+      const authRefused = status === 401 || status === 403;
+      const startFailed = !styleReady && !ev.sourceId;
+      if (authRefused || startFailed) {
+        setMapError(true);
+        return;
+      }
+      console.warn("[app] map error (not fatal):", ev.error);
     });
 
     // Update cluster markers on moveend and sourcedata events
@@ -655,6 +678,12 @@ export default function MapCanvas({
 
     const poll = async () => {
       if (cancelled) return;
+      // One poll chain at a time: a focus or visibility poll cancels the
+      // re-arm timer that is still waiting.
+      if (timer) {
+        clearTimeout(timer);
+        timer = null;
+      }
       // Skip polling a backgrounded tab — a hidden tab polling every cycle is
       // needless Database egress. Re-arm cheaply (no fetch); the visibilitychange
       // handler below fires an immediate poll the moment the tab is foregrounded.
@@ -703,6 +732,7 @@ export default function MapCanvas({
         if (cancelled) return;
         // Re-arm with jitter so two clients don't synchronize.
         const jitter = Math.random() * 5_000;
+        if (timer) clearTimeout(timer);
         timer = setTimeout(poll, retryDelay + jitter);
       }
     };
@@ -812,34 +842,55 @@ export default function MapCanvas({
     setSidebarMobileOpen(false);
   }, []);
 
-  const handleSoftDeleteFromCard = useCallback((loc: Location) => {
-    if (cardDeleteTimerRef.current) clearTimeout(cardDeleteTimerRef.current);
-    pendingCardDeleteLocRef.current = loc;
-    setPendingCardDeleteId(loc.id);
-    setLocations((prev) => prev.filter((l) => l.id !== loc.id));
-    setSelectedLocation(null);
-    // Mark it deleted up-front so an interim poll can't restore it; undo clears.
-    recentlyDeletedIdsRef.current.add(loc.id);
-
-    cardDeleteTimerRef.current = setTimeout(async () => {
-      try {
-        // api.deleteLocation goes through apiFetch → sends the CSRF header,
-        // which the route requires for state-changing calls.
-        await api.deleteLocation(loc.id);
-        // Keep the guard for ~60s after a SUCCESSFUL delete to outlast the
-        // list route's stale-while-revalidate window, then release it.
-        setTimeout(() => recentlyDeletedIdsRef.current.delete(loc.id), 60_000);
-      } catch (err) {
-        // Delete failed — release the guard now so the row can come back rather
-        // than being hidden forever.
-        recentlyDeletedIdsRef.current.delete(loc.id);
-        console.warn("[app] card delete failed", err);
-      }
-      setPendingCardDeleteId(null);
-      pendingCardDeleteLocRef.current = null;
-      cardDeleteTimerRef.current = null;
-    }, 5000);
+  // Sends one card delete. On failure the pin comes back and a short note shows.
+  const sendCardDelete = useCallback(async (loc: Location) => {
+    try {
+      // api.deleteLocation goes through apiFetch → sends the CSRF header,
+      // which the route requires for state-changing calls.
+      await api.deleteLocation(loc.id);
+      // Keep the guard for ~60s after a SUCCESSFUL delete to outlast the
+      // list route's stale-while-revalidate window, then release it.
+      setTimeout(() => recentlyDeletedIdsRef.current.delete(loc.id), 60_000);
+    } catch (err) {
+      // Delete failed: release the guard and put the pin back.
+      recentlyDeletedIdsRef.current.delete(loc.id);
+      setLocations((prev) =>
+        prev.some((l) => l.id === loc.id) ? prev : [loc, ...prev],
+      );
+      console.warn("[app] card delete failed", err);
+      setCardNotice("Couldn't delete that place. It is back on the map.");
+      if (cardNoticeTimerRef.current) clearTimeout(cardNoticeTimerRef.current);
+      cardNoticeTimerRef.current = setTimeout(() => {
+        setCardNotice("");
+        cardNoticeTimerRef.current = null;
+      }, 4000);
+    }
   }, []);
+
+  const handleSoftDeleteFromCard = useCallback(
+    (loc: Location) => {
+      // A delete still in its undo window is sent now, never dropped.
+      if (cardDeleteTimerRef.current) clearTimeout(cardDeleteTimerRef.current);
+      cardDeleteTimerRef.current = null;
+      const earlier = pendingCardDeleteLocRef.current;
+      if (earlier && earlier.id !== loc.id) void sendCardDelete(earlier);
+
+      pendingCardDeleteLocRef.current = loc;
+      setPendingCardDeleteId(loc.id);
+      setLocations((prev) => prev.filter((l) => l.id !== loc.id));
+      setSelectedLocation(null);
+      // Mark it deleted up-front so an interim poll can't restore it; undo clears.
+      recentlyDeletedIdsRef.current.add(loc.id);
+
+      cardDeleteTimerRef.current = setTimeout(() => {
+        setPendingCardDeleteId(null);
+        pendingCardDeleteLocRef.current = null;
+        cardDeleteTimerRef.current = null;
+        void sendCardDelete(loc);
+      }, 5000);
+    },
+    [sendCardDelete],
+  );
 
   const handleUndoCardDelete = useCallback(() => {
     if (cardDeleteTimerRef.current) clearTimeout(cardDeleteTimerRef.current);
@@ -1261,6 +1312,31 @@ export default function MapCanvas({
               }}
             />
           </div>
+        </div>
+      )}
+
+      {/* Card delete failure note, in the undo toast's style */}
+      {cardNotice && !pendingCardDeleteId && (
+        <div
+          role="alert"
+          style={{
+            position: "fixed",
+            bottom: "24px",
+            left: "50%",
+            transform: "translateX(-50%)",
+            background: "#4A3728",
+            color: "white",
+            borderRadius: "100px",
+            fontFamily: "var(--font-quicksand), sans-serif",
+            fontSize: "12px",
+            letterSpacing: "1px",
+            zIndex: 60,
+            padding: "10px 24px",
+            minWidth: "220px",
+            textAlign: "center",
+          }}
+        >
+          {cardNotice}
         </div>
       )}
 

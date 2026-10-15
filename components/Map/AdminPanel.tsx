@@ -96,6 +96,13 @@ const TrashIcon = () => (
   </svg>
 );
 
+// Every photo is decoded and drawn onto a canvas, then encoded again as JPEG,
+// whatever its size. A canvas holds only pixels, so the stored file carries
+// none of the source metadata (GPS position, camera, device). No path returns
+// the original file: when the photo cannot be decoded or encoded this throws
+// PHOTO_UNREADABLE and the caller refuses the upload. The size cap only
+// shrinks; it never upscales. HEIC is refused (HEIC_UNSUPPORTED) because not
+// every browser can decode it.
 async function compressImage(
   file: File,
   maxWidthPx = 2400,
@@ -108,34 +115,33 @@ async function compressImage(
     file.name.toLowerCase().endsWith(".heif");
   if (isHeic) throw new Error("HEIC_UNSUPPORTED");
 
-  if (file.size < 1.5 * 1024 * 1024) {
-    console.log(
-      `[app] compressImage skipped (${(file.size / 1024).toFixed(0)}KB already < 1.5MB)`,
-    );
-    return file;
-  }
-
+  let bitmap: ImageBitmap;
   try {
-    // createImageBitmap with imageOrientation: 'from-image' applies EXIF
-    // rotation natively — fixes the iPhone-portrait-loaded-sideways problem.
-    // EXIF metadata (GPS, device info) is automatically stripped because
-    // canvas-based encoding doesn't preserve any source metadata. This is
-    // a privacy feature, not a bug.
-    const bitmap = await createImageBitmap(file, {
+    // imageOrientation "from-image" applies the EXIF rotation to the pixels,
+    // so a portrait phone photo is not sideways once its metadata is gone.
+    bitmap = await createImageBitmap(file, {
       imageOrientation: "from-image",
     });
-    const scale = Math.min(
-      1,
-      maxWidthPx / Math.max(bitmap.width, bitmap.height),
-    );
-    const w = Math.round(bitmap.width * scale);
-    const h = Math.round(bitmap.height * scale);
+  } catch (err) {
+    console.warn("[app] compressImage could not decode the photo:", err);
+    throw new Error("PHOTO_UNREADABLE");
+  }
 
-    let blob: Blob | null = null;
+  let blob: Blob | null = null;
+  const scale = Math.min(
+    1,
+    maxWidthPx / Math.max(bitmap.width, bitmap.height),
+  );
+  const w = Math.max(1, Math.round(bitmap.width * scale));
+  const h = Math.max(1, Math.round(bitmap.height * scale));
+  try {
     if (typeof OffscreenCanvas !== "undefined") {
       const canvas = new OffscreenCanvas(w, h);
       const ctx = canvas.getContext("2d");
       if (ctx) {
+        // JPEG has no transparency: paint white first so a clear PNG does not turn black.
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, w, h);
         ctx.drawImage(bitmap, 0, 0, w, h);
         blob = await canvas.convertToBlob({
           type: "image/jpeg",
@@ -148,28 +154,41 @@ async function compressImage(
       canvas.height = h;
       const ctx = canvas.getContext("2d");
       if (ctx) {
+        // JPEG has no transparency: paint white first so a clear PNG does not turn black.
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, w, h);
         ctx.drawImage(bitmap, 0, 0, w, h);
         blob = await new Promise<Blob | null>((resolve) =>
           canvas.toBlob(resolve, "image/jpeg", qualityJpeg),
         );
       }
     }
-    bitmap.close();
-
-    if (!blob) return file;
-
-    const compressed = new File([blob], file.name.replace(/\.[^.]+$/, ".jpg"), {
-      type: "image/jpeg",
-    });
-    const ratio = (file.size / compressed.size).toFixed(2);
-    console.log(
-      `[app] compressImage: ${(file.size / 1024).toFixed(0)}KB → ${(compressed.size / 1024).toFixed(0)}KB (${ratio}× smaller, ${w}×${h})`,
-    );
-    return compressed;
   } catch (err) {
-    if ((err as Error).message === "HEIC_UNSUPPORTED") throw err;
-    console.warn("[app] compressImage failed, using original:", err);
-    return file;
+    console.warn("[app] compressImage could not encode the photo:", err);
+    blob = null;
+  } finally {
+    bitmap.close();
+  }
+
+  if (!blob || blob.size === 0) throw new Error("PHOTO_UNREADABLE");
+
+  return new File([blob], file.name.replace(/\.[^.]+$/, "") + ".jpg", {
+    type: "image/jpeg",
+  });
+}
+
+/** Sends one location delete. True only when the server answered 2xx. */
+async function requestLocationDelete(id: string): Promise<boolean> {
+  try {
+    const res = await fetch(`/api/locations/${id}`, {
+      method: "DELETE",
+      headers: csrfHeader(),
+    });
+    if (!res.ok) console.error("[app] DELETE /api/locations failed:", res.status);
+    return res.ok;
+  } catch (err) {
+    console.error("[app] DELETE /api/locations failed:", err);
+    return false;
   }
 }
 
@@ -354,6 +373,11 @@ export default function AdminPanel({
     "idle",
   );
   const mountedRef = useRef(true);
+  // The latest onLocationDeleted, so a delete sent after close uses it.
+  const onLocationDeletedRef = useRef(onLocationDeleted);
+  useEffect(() => {
+    onLocationDeletedRef.current = onLocationDeleted;
+  }, [onLocationDeleted]);
 
   useEffect(() => {
     const t = setTimeout(() => setVisible(true), 10);
@@ -370,7 +394,17 @@ export default function AdminPanel({
       mountedRef.current = false;
       setReauthReloadSuppressed(false);
       tempMarkerRef.current?.remove();
+      // Closing the panel inside the undo window sends the delete now; it is
+      // never dropped. The place leaves the map only if the server says yes.
       if (deleteTimerRef.current) clearTimeout(deleteTimerRef.current);
+      deleteTimerRef.current = null;
+      const pendingDelete = pendingDeleteLocRef.current;
+      pendingDeleteLocRef.current = null;
+      if (pendingDelete) {
+        void requestLocationDelete(pendingDelete.id).then((ok) => {
+          if (ok) onLocationDeletedRef.current(pendingDelete.id);
+        });
+      }
       if (mobileHideTimeoutRef.current)
         clearTimeout(mobileHideTimeoutRef.current);
       if (overlayGuardTimerRef.current)
@@ -1068,24 +1102,33 @@ export default function AdminPanel({
     }
   }
 
+  // Sends one delete. The place leaves the map only when the server says yes;
+  // a refusal (401, 403, 429, 500) or a network failure shows the panel's toast.
+  async function sendDelete(loc: Location) {
+    const ok = await requestLocationDelete(loc.id);
+    if (ok) {
+      onLocationDeletedRef.current(loc.id);
+    } else if (mountedRef.current) {
+      showToast("Couldn't delete that place. Try again.");
+    }
+    if (mountedRef.current)
+      setPendingDeleteId((prev) => (prev === loc.id ? null : prev));
+  }
+
   function handleSoftDelete(loc: Location) {
+    // A delete still in its undo window is sent now, never dropped.
     if (deleteTimerRef.current) clearTimeout(deleteTimerRef.current);
+    deleteTimerRef.current = null;
+    const earlier = pendingDeleteLocRef.current;
+    if (earlier && earlier.id !== loc.id) void sendDelete(earlier);
+
     pendingDeleteLocRef.current = loc;
     setPendingDeleteId(loc.id);
 
-    deleteTimerRef.current = setTimeout(async () => {
-      try {
-        await fetch(`/api/locations/${loc.id}`, {
-          method: "DELETE",
-          headers: csrfHeader(),
-        });
-      } catch (err) {
-        console.error("[app] DELETE /api/locations failed:", err);
-      }
-      onLocationDeleted(loc.id);
-      setPendingDeleteId(null);
+    deleteTimerRef.current = setTimeout(() => {
       pendingDeleteLocRef.current = null;
       deleteTimerRef.current = null;
+      void sendDelete(loc);
     }, 5000);
   }
 
@@ -1401,7 +1444,7 @@ export default function AdminPanel({
                 <input
                   ref={photoInputRef}
                   type="file"
-                  accept="image/jpeg,image/png,image/webp,image/heic"
+                  accept="image/jpeg,image/png,image/webp"
                   style={{ display: "none" }}
                   onChange={async (e) => {
                     // iOS ghost-click guard: when file picker closes, iOS fires a
@@ -1428,7 +1471,11 @@ export default function AdminPanel({
                         );
                         return;
                       }
-                      compressed = file;
+                      // Never send the original: it may carry the photo's GPS position.
+                      setPhotoError(
+                        "Couldn't read this photo. Try a JPEG or PNG.",
+                      );
+                      return;
                     }
                     if (editingId) {
                       if (existingPhotos.length < 10) {

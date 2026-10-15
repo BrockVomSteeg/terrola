@@ -9,12 +9,24 @@ export default function PasswordGate() {
   const [shaking, setShaking] = useState(false);
   const [borderError, setBorderError] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
+
+  // Shake, say what went wrong, and put the cursor back in the field.
+  function fail(text: string) {
+    setMessage(text);
+    setBorderError(true);
+    setShaking(true);
+    setTimeout(() => setShaking(false), 500);
+    setTimeout(() => setBorderError(false), 1200);
+    inputRef.current?.focus();
+  }
 
   async function submit() {
     if (loading || !value) return;
     setLoading(true);
+    setMessage("");
 
     try {
       const res = await fetch("/api/auth", {
@@ -29,20 +41,16 @@ export default function PasswordGate() {
         inputRef.current?.blur();
         await new Promise((resolve) => requestAnimationFrame(resolve));
         router.push("/map");
-      } else {
-        // Shake + error state
+      } else if (res.status === 401) {
         setValue("");
-        setBorderError(true);
-        setShaking(true);
-        setTimeout(() => setShaking(false), 500);
-        setTimeout(() => setBorderError(false), 1200);
-        inputRef.current?.focus();
+        fail("Wrong password.");
+      } else if (res.status === 429) {
+        fail("Too many tries. Wait a few minutes, then try again.");
+      } else {
+        fail("The site can't check the password right now. Try again later.");
       }
     } catch {
-      setBorderError(true);
-      setShaking(true);
-      setTimeout(() => setShaking(false), 500);
-      setTimeout(() => setBorderError(false), 1200);
+      fail("The site can't check the password right now. Try again later.");
     } finally {
       setLoading(false);
     }
@@ -101,6 +109,7 @@ export default function PasswordGate() {
             id="password"
             ref={inputRef}
             aria-invalid={borderError}
+            aria-describedby="password-message"
             type="password"
             value={value}
             onChange={(e) => setValue(e.target.value)}
@@ -124,6 +133,22 @@ export default function PasswordGate() {
             }}
           />
         </div>
+
+        <p
+          id="password-message"
+          role="status"
+          style={{
+            fontFamily: "var(--font-quicksand), sans-serif",
+            fontSize: "13px",
+            color: "#6B4F3A",
+            margin: 0,
+            minHeight: "18px",
+            maxWidth: "260px",
+            textAlign: "center",
+          }}
+        >
+          {message}
+        </p>
 
         {/* Submit symbol below */}
         <button

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { checkRateLimit, RATE_LIMITS } from "@/app/api/_lib/rate-limit";
+import { storeError } from "@/app/api/_lib/store-response";
 import { getMode } from "@/lib/mode";
+import { COOKIE_NAME, verifySessionToken } from "@/lib/session";
 
 /** Place search belongs to adding a place, which only a logged in live user can do. */
 function isLive(): boolean {
@@ -20,6 +22,12 @@ export async function GET(request: NextRequest) {
       { error: "Not found" },
       { status: 404, headers: { "Cache-Control": "no-store" } },
     );
+  }
+
+  // The route checks the session itself; the proxy is never the only gate
+  // (SPEC R17). No valid session cookie, no search sent on to Mapbox.
+  if (!(await verifySessionToken(request.cookies.get(COOKIE_NAME)?.value))) {
+    return storeError("unauthorized", "Search request failed");
   }
 
   const rl = checkRateLimit(

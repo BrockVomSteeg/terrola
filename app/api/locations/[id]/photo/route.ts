@@ -10,6 +10,21 @@ import { COOKIE_NAME } from "@/lib/session";
 const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+/** The part of a minted photo name after `<id>-`: Date.now() and the extension. */
+const MINTED_SUFFIX = /^\d{13}\.jpg$/;
+
+/**
+ * True only for the exact name createPhotoUpload mints for this place. The id is
+ * compared as a plain string, never built into a pattern.
+ */
+function isMintedPhotoName(id: string, path: unknown): path is string {
+  if (typeof path !== "string") return false;
+  const prefix = id + "-";
+  return (
+    path.startsWith(prefix) && MINTED_SUFFIX.test(path.slice(prefix.length))
+  );
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -76,8 +91,10 @@ export async function POST(
 
   const body = await request.json().catch(() => null);
   const path: unknown = body?.path;
-  // IDOR guard: the object MUST be in this location's namespace.
-  if (typeof path !== "string" || !path.startsWith(id + "-")) {
+  // IDOR guard: the path must be exactly a name createPhotoUpload mints for this
+  // place, `<id>-<13 digits>.jpg` (the live store's createPhotoUpload). A slash, a
+  // `.thumb` or `.card` suffix, or another place's id is refused.
+  if (!isMintedPhotoName(id, path)) {
     return NextResponse.json({ error: "Invalid path" }, { status: 400 });
   }
 

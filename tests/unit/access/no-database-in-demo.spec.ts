@@ -174,7 +174,7 @@ test.describe("no database and no network in a demo", () => {
         "/api/locations/[id]/photo POST",
         (
           await photoPost(
-            call("POST", `/api/locations/${fixture}/photo`, { path: `${fixture}-1.jpg` }),
+            call("POST", `/api/locations/${fixture}/photo`, { path: `${fixture}-1700000000000.jpg` }),
             at(fixture),
           )
         ).status,
@@ -224,7 +224,7 @@ test.describe("no database and no network in a demo", () => {
     ]);
     answers.push([
       "/api/locations/[id]/photo POST",
-      (await photoPost(call("POST", `/api/locations/${id}/photo`, { path: `${id}-1.jpg` }), at(id)))
+      (await photoPost(call("POST", `/api/locations/${id}/photo`, { path: `${id}-1700000000000.jpg` }), at(id)))
         .status,
     ]);
     answers.push([
