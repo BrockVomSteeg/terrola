@@ -4,6 +4,7 @@ import path from "node:path";
 import { NextRequest } from "next/server";
 import { GET as placeSearch } from "@/app/api/geocode/route";
 import { LIVE_VARS } from "@/lib/mode";
+import { COOKIE_NAME, createSessionToken } from "@/lib/session";
 
 // What a stranger on the public demo can reach beyond the map itself (SPEC R4, R14).
 // The server side refusals are the real control and are tested in proxy-matrix,
@@ -22,6 +23,8 @@ const MANAGED = [
 const KEY = "unit-test-signing-key-0123456789abcdef";
 // Shaped like a public map token, built at run time. Never a real one.
 const MAP_TOKEN = "pk." + "unit-test-map-token".repeat(3);
+// Shaped like bcrypt output, built at run time. Never a real hash.
+const HASH = "$2b$04$" + "a".repeat(53);
 
 let saved: Record<string, string | undefined> = {};
 let realFetch: typeof fetch;
@@ -50,6 +53,21 @@ test.afterEach(() => {
 
 const search = (query: string) =>
   placeSearch(new NextRequest(`http://localhost/api/geocode?${query}`));
+
+/** The same search, sent with a session cookie. */
+const searchAs = (cookie: string, query: string) =>
+  placeSearch(
+    new NextRequest(`http://localhost/api/geocode?${query}`, {
+      headers: { cookie: `${COOKIE_NAME}=${cookie}` },
+    }),
+  );
+
+/** A session that verifies under the environment the test has set. */
+async function liveSession(): Promise<string> {
+  const token = await createSessionToken();
+  if (!token) throw new Error("the test environment cannot sign a session");
+  return token;
+}
 
 test.describe("place search in a demo", () => {
   const QUERIES = [
@@ -85,10 +103,41 @@ test.describe("place search in a demo", () => {
 
   test("live mode gets past this check (and stops at the missing token, with no network call)", async () => {
     env.SESSION_SECRET = KEY;
-    const res = await search("q=lisbon");
+    env.SITE_PASSWORD_HASH = HASH;
+    const res = await searchAs(await liveSession(), "q=lisbon");
     expect(res.status).toBe(500);
     expect(await res.json()).toEqual({ error: "Mapbox token not configured" });
     expect(fetched).toEqual([]);
+  });
+});
+
+test.describe("place search in live mode", () => {
+  test("checks the session itself: no valid session cookie answers 401 and nothing is sent on", async () => {
+    env.SESSION_SECRET = KEY;
+    env.SITE_PASSWORD_HASH = HASH;
+    env.NEXT_PUBLIC_MAPBOX_TOKEN = MAP_TOKEN;
+    for (const cookie of [undefined, "", "not-a-session", (await liveSession()) + "x"]) {
+      const res =
+        cookie === undefined
+          ? await search("q=lisbon&session=00000000-0000-4000-8000-000000000001")
+          : await searchAs(cookie, "q=lisbon&session=00000000-0000-4000-8000-000000000001");
+      expect(res.status, String(cookie)).toBe(401);
+      expect(await res.text(), String(cookie)).not.toContain(MAP_TOKEN);
+    }
+    expect(fetched).toEqual([]);
+  });
+
+  test("a valid session gets past the check", async () => {
+    env.SESSION_SECRET = KEY;
+    env.SITE_PASSWORD_HASH = HASH;
+    env.NEXT_PUBLIC_MAPBOX_TOKEN = MAP_TOKEN;
+    const res = await searchAs(
+      await liveSession(),
+      "q=lisbon&session=00000000-0000-4000-8000-000000000001",
+    );
+    // The stubbed network refuses, so the route answers its own failure.
+    expect(res.status).toBe(500);
+    expect(fetched.length).toBe(1);
   });
 });
 

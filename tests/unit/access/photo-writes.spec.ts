@@ -156,6 +156,34 @@ test.describe("the writable demo", () => {
     }
   });
 
+  test("a path is taken only when it is exactly a name the upload step mints", async () => {
+    writable();
+    const own = place(2);
+    const other = place(3);
+    for (const path of [
+      // a slash: an object under another place's name
+      `${own.id}-x/${other.id}-1700000000000.jpg`,
+      // a derivative, not a photo
+      `${own.id}-1700000000000.jpg.thumb`,
+      `${own.id}-1700000000000.jpg.card`,
+      // a wrong digit count
+      `${own.id}-170000000000.jpg`,
+      `${own.id}-17000000000000.jpg`,
+      // another place's id
+      `${other.id}-1700000000000.jpg`,
+      // another extension than the one minted
+      `${own.id}-1700000000000.png`,
+    ]) {
+      const res = await register(own.id, path);
+      expect(res.status, path).toBe(400);
+      expect(await res.json()).toEqual({ error: "Invalid path" });
+    }
+    // The minted shape itself passes the check and reaches the store, which in
+    // the demo has no file storage.
+    const minted = await register(own.id, `${own.id}-1700000000000.jpg`);
+    expect(minted.status).toBe(501);
+  });
+
   test("a delete of a photo named for another place removes nothing in either place", async () => {
     writable();
     const own = place(2);
