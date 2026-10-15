@@ -1,7 +1,8 @@
 // The demo's data: made up visits to eighteen public places, each one where a free
 // photograph was taken. Eleven are spread around the world and seven sit in Kyoto (the
-// cherry blossom walk and six more), so the map also shows what one busy area looks like. The titles, dates and words are invented; no real
-// person or real trip is behind them. Ids are fixed so links and tests stay stable.
+// cherry blossom walk and six more), so the map also shows what one busy area looks
+// like. The titles, dates and words are invented; no real person or real trip is behind
+// them. Ids are fixed so links and tests stay stable.
 // Every category appears at least once.
 //
 // Import-free apart from types: safe anywhere.
