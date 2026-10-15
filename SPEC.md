@@ -7,7 +7,7 @@ Wave 1: the map only. This file says what "done" means. Every rule below is chec
 
 A private, shared map for a small group. Pin places, add photos and notes, see them on a map
 with a warm palette. Self-hostable on Next.js, Supabase and Mapbox, with an open read-only demo
-on made-up data. MIT licensed. A portfolio project.
+on made-up data. Licensed under MIT or Apache-2.0, at your option. A portfolio project.
 
 ## 2. Scope
 
@@ -118,5 +118,7 @@ Ads, payments, paid tiers and sponsor links need the owner first (`CLAUDE.md`).
 - Footer line: if the README links to the owner's other work, the owner supplies the exact line:
   one line of text, no logo or badge, in `README.md` only, never in the demo UI, `lib/brand.ts` or
   the manifest.
-- Licence: MIT. Only the owner changes `LICENSE` (protected in `LANES.json`, listed in
-  `CODEOWNERS`), and only before the repository is made public.
+- Licence: MIT or Apache-2.0, at the user's option (`LICENSE-MIT`, `LICENSE-APACHE`), as the
+  Rust project does. Only the owner changes them (protected in `LANES.json`, listed in
+  `CODEOWNERS`). Changed from MIT alone on 2026-10-14 while the owner was the only author;
+  release v0.1.0 stays MIT. Demo photos, fonts and Mapbox keep their own licences.

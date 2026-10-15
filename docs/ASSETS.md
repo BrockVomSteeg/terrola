@@ -17,10 +17,10 @@ source and licence for each one ([`SPEC.md`](../SPEC.md)).
 | `public/demo/location-photos/00000000-0000-4000-8000-000000000010-1700000000000.jpg` | Demo photo: evening on the columns of the Temple of Olympian Zeus, Athens, Greece. Resized to 1400px, metadata removed | https://commons.wikimedia.org/wiki/File:Evening_columns_Zeus_temple_Athens.jpg, by Jebulon | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) |
 | `public/demo/location-photos/00000000-0000-4000-8000-000000000011-1700000000000.jpg` | Demo photo: the Flaming Cliffs (Bayanzag), Gobi desert, Mongolia. Resized to 1400px, metadata removed | https://commons.wikimedia.org/wiki/File:Bayanzag_07.jpg, by Bernard Gagnon | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) |
 | `public/demo/location-photos/00000000-0000-4000-8000-000000000012-1700000000000.jpg` | Demo photo: the Roman aqueduct and city walls at dusk, Segovia, Spain. Resized to 1400px, metadata removed | https://commons.wikimedia.org/wiki/File:Aqueduct_city_wall_Segovia_night.jpg, by Jebulon | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) |
-| `public/icon-192.png` | App icon, 192 by 192 pixels, a render of `icon-192.svg` | made for this project | MIT, with the rest of the repository |
-| `public/icon-192.svg` | App icon, 192 by 192, vector (one square and three circles, drawn in code in the project's colours); the source of the PNG | made for this project | MIT, with the rest of the repository |
-| `public/icon-512.png` | App icon, 512 by 512 pixels, a render of `icon-512.svg` | made for this project | MIT, with the rest of the repository |
-| `public/icon-512.svg` | App icon, 512 by 512, vector; the source of the PNG | made for this project | MIT, with the rest of the repository |
+| `public/icon-192.png` | App icon, 192 by 192 pixels, a render of `icon-192.svg` | made for this project | MIT or Apache-2.0, with the rest of the repository |
+| `public/icon-192.svg` | App icon, 192 by 192, vector (one square and three circles, drawn in code in the project's colours); the source of the PNG | made for this project | MIT or Apache-2.0, with the rest of the repository |
+| `public/icon-512.png` | App icon, 512 by 512 pixels, a render of `icon-512.svg` | made for this project | MIT or Apache-2.0, with the rest of the repository |
+| `public/icon-512.svg` | App icon, 512 by 512, vector; the source of the PNG | made for this project | MIT or Apache-2.0, with the rest of the repository |
 | `public/manifest.json` | Web app manifest: name, id, scope, colours, start page and the two PNG icons | Written in this repository, owned by the brand lane ([`LANES.json`](../LANES.json)) | MIT, the repository licence (SPEC section 1) |
 
 The twelve demo photos are real photographs from Wikimedia Commons, each dedicated to the public

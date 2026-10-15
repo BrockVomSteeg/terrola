@@ -4,7 +4,8 @@
     "CLAUDE.md",
     "LANES.json",
     "CODEOWNERS",
-    "LICENSE",
+    "LICENSE-MIT",
+    "LICENSE-APACHE",
     ".github/**",
     "scripts/gates/**"
   ],
