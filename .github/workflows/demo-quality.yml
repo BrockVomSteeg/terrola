@@ -90,7 +90,9 @@ jobs:
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
-          ref: ${{ needs.target.outputs.ref }}
+          # No ref override: the default is the event's own commit (the deployed one for a
+          # deployment, main for a run by hand or on schedule). Passing a ref from another
+          # job made CodeQL flag every later step as cache poisoning (alerts 3 to 5).
           persist-credentials: false
 
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
@@ -135,7 +137,9 @@ jobs:
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
-          ref: ${{ needs.target.outputs.ref }}
+          # No ref override: the default is the event's own commit (the deployed one for a
+          # deployment, main for a run by hand or on schedule). Passing a ref from another
+          # job made CodeQL flag every later step as cache poisoning (alerts 3 to 5).
           persist-credentials: false
 
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
