@@ -7,7 +7,7 @@ a map with a warm palette. You host it yourself on Next.js, Supabase and Mapbox.
 
 Demo: <https://terrola.vercel.app>
 
-![The Terrola demo: the list of places, an open place card with a photo, and a flat world map with photo pins](docs/demo.jpg)
+![The Terrola demo: the list of places, an open place card with a drawn picture, and the map](docs/demo.jpg)
 
 The hosted demo on 2026-10-13. Map: © Mapbox, © OpenStreetMap.
 
@@ -33,7 +33,7 @@ under [`tests/unit/access/`](tests/unit/access/).
 | The demo's data is made up and held in memory | [`lib/demo/fixtures.ts`](lib/demo/fixtures.ts), [`lib/demo/memory-store.ts`](lib/demo/memory-store.ts) | [`memory-store.spec.ts`](tests/unit/access/memory-store.spec.ts) |
 | The demo's photos are plain JPEGs with no metadata that the app serves itself, and nothing else under `/demo` skips the proxy | [`public/demo/location-photos/`](public/demo/location-photos/), [`proxy.ts`](proxy.ts) | [`memory-store.spec.ts`](tests/unit/access/memory-store.spec.ts), [`proxy-matrix.spec.ts`](tests/unit/access/proxy-matrix.spec.ts) |
 | The Mapbox wordmark and attribution are not under the list or an open place card | [`components/Map/MapCanvas.tsx`](components/Map/MapCanvas.tsx), [`components/Map/LocationCard.tsx`](components/Map/LocationCard.tsx) | [`map-credit.spec.ts`](tests/unit/access/map-credit.spec.ts), a check of the source text; the picture above is the rendered result |
-| Reads and writes go through one gate that checks the caller again | [`lib/demo/gate.ts`](lib/demo/gate.ts), [`app/api/_lib/live-access.ts`](app/api/_lib/live-access.ts) | [`gate.spec.ts`](tests/unit/access/gate.spec.ts), [`live-access.spec.ts`](tests/unit/access/live-access.spec.ts) |
+| Reads and writes go through one gate that checks the caller again | [`lib/demo/gate.ts`](lib/demo/gate.ts), [`app/api/_lib/live-access.ts`](app/api/_lib/live-access.ts) | [`gate.spec.ts`](tests/unit/access/gate.spec.ts), [`live-access.spec.ts`](tests/unit/access/live-access.spec.ts), [`location-writes.spec.ts`](tests/unit/access/location-writes.spec.ts), [`photo-writes.spec.ts`](tests/unit/access/photo-writes.spec.ts) |
 | The demo screen offers no control that writes, and place search is closed | [`components/Map/MapCanvas.tsx`](components/Map/MapCanvas.tsx), [`app/api/geocode/route.ts`](app/api/geocode/route.ts) | [`demo-surface.spec.ts`](tests/unit/access/demo-surface.spec.ts) |
 | A pull request from a lane branch touches only that lane's files | [`LANES.json`](LANES.json), [`scripts/gates/lane-ownership.mjs`](scripts/gates/lane-ownership.mjs) | CI job `gates` in [`build.yml`](.github/workflows/build.yml) |
 | Every file under `public/` is listed in [`docs/ASSETS.md`](docs/ASSETS.md) | [`scripts/gates/provenance.mjs`](scripts/gates/provenance.mjs) | CI job `gates` in [`build.yml`](.github/workflows/build.yml) |
@@ -50,9 +50,9 @@ More detail: [SECURITY.md](SECURITY.md), [PRIVACY.md](PRIVACY.md),
 
 ## Numbers
 
-Counted from the repository on 2026-10-13.
+Counted from the repository on 2026-10-15.
 
-- 13 unit spec files under `tests/unit/access/` (count of `*.spec.ts` files).
+- 18 unit spec files under `tests/unit/` (count of `*.spec.ts` files).
 - 9 CI jobs in 4 workflows under `.github/workflows/`: `build`, `unit`, `cold-clone` and
   `gates` in `build.yml`, `check` in `no-direct-supabase.yml`, `lock` in `lockfile.yml`, and
   `target`, `axe` and `lighthouse` in `demo-quality.yml`. That workflow runs axe and
@@ -91,7 +91,7 @@ or `NODE_ENV=test`. Adding, editing and removing places works there, in memory, 
 when the server stops. Photo uploads answer 501 "not supported in the demo".
 
 To use it on a phone, open your own deployment in the phone browser and add it to the home
-screen. Safari: Share, then Add to Home Screen. Chrome on Android: Install app.
+screen. Safari: Share, then Add to Home Screen. Chrome on Android: open the menu, then Install app or Add to Home screen.
 
 For a live copy, create a Supabase project and run
 [`supabase/migrations/20260101000000_init.sql`](supabase/migrations/20260101000000_init.sql).
@@ -110,8 +110,9 @@ From [`SPEC.md`](SPEC.md):
   the free hosting and map services the demo relies on.
 - **Accounts per user.** Deferred to a later wave. Today there is one shared password.
 - **Weather and tide facts, illustrated scenes, native apps.** Deferred to a later wave.
-- **Many maps.** Each map shared with its own group of people, who can all add to it; one
-  person can be in several maps.
+
+Ideas for later: many maps. Each map is shared with its own group of people, who can all add
+to it; one person can be in several maps.
 
 Known gaps, listed in [SECURITY.md](SECURITY.md):
 

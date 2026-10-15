@@ -121,8 +121,8 @@ A secret under 16 characters counts as no secret.
 ## Known gaps
 
 - The data gate (SPEC R17, [`lib/demo/gate.ts`](../lib/demo/gate.ts)) now covers reads and
-  writes. No route file under `app/api/` imports the database client, so a new route that
-  forgot the proxy would still meet the store's own check.
+  writes. Every route today asks the gate, so a route the proxy list forgot still meets the
+  store's own check. Nothing in CI stops a new route from importing the database client itself.
 - A signed photo link works without a session for up to 30 days, and a live read saves a
   refreshed link back to its row ([`live-store.ts`](../app/api/_lib/live-store.ts)).
 - The server's database key bypasses row level security, so the checks in the app are the only

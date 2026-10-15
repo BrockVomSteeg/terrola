@@ -217,9 +217,8 @@ reports and blocks nothing. It allows `'unsafe-inline'` for scripts and styles
 - **Some gates named in SPEC do not exist yet.** [`scripts/gates/`](scripts/gates/) holds the
   brand, lane ownership, personal strings and provenance scripts; the others in SPEC section 3 are not
   written. Brand, lane ownership and provenance run in CI; personal strings does not
-  ([`.github/workflows/build.yml`](.github/workflows/build.yml)). Two more CI jobs help: `cold-clone`
-  (a fresh install that fails if an env file exists, the Mapbox token is set, or no test
-  passed) and GitHub code scanning (CodeQL).
+  ([`.github/workflows/build.yml`](.github/workflows/build.yml)). One more CI job, cold-clone, and
+  GitHub code scanning (CodeQL) also run.
 - **`scripts/check-env.mjs` is not part of the build.** See "The demo never runs next to
   live settings".
 - **No audit log.** Nothing records who changed what.
