@@ -72,11 +72,38 @@ test.describe("a failed storage listing", () => {
     expect(outside).toHaveLength(inMethods);
   });
 
-  test("a reorder never saves an empty photo list", () => {
+  test("a reorder never saves an empty or short photo list", () => {
     const body = method(read("app/api/_lib/live-store.ts"), "updateLocation");
-    const guard = body.indexOf('if (signed.length === 0) return refused("failed");');
+    const guard = body.indexOf(
+      "if (signed.length === 0 || signed.length !== order.length)\n          return refused(\"failed\");",
+    );
     const save = body.indexOf("updates.photos = signed;");
     expect(guard).toBeGreaterThan(-1);
     expect(guard).toBeLessThan(save);
   });
+});
+
+// signPhotoFiles drops a photo it cannot sign. Saving that list would drop the photo
+// from the place's list, so a short list is a failure and nothing is saved.
+test.describe("a photo that does not sign", () => {
+  const store = read("app/api/_lib/live-store.ts");
+
+  test("rebuildPhotos says when its list is short", () => {
+    const body = topLevel(store, "async function rebuildPhotos(");
+    expect(body).toContain("const photos = await signPhotoFiles(order);");
+    expect(body).toContain("complete: photos.length === order.length,");
+  });
+
+  for (const name of ["registerPhoto", "deletePhoto"]) {
+    test(`${name} answers failed for a short list before it saves anything`, () => {
+      const body = method(store, name);
+      const guard = body.indexOf('if (!complete) return refused("failed");');
+      const save = body.indexOf("await persistPhotos(");
+      expect(guard, name).toBeGreaterThan(-1);
+      expect(save, name).toBeGreaterThan(-1);
+      expect(guard, name).toBeLessThan(save);
+      // `complete` is the one rebuildPhotos handed back in this method.
+      expect(body, name).toMatch(/const \{[^}]*\bcomplete\b[^}]*\} = await rebuildPhotos\(/);
+    });
+  }
 });

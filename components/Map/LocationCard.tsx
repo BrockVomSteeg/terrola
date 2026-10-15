@@ -118,15 +118,19 @@ export default function LocationCard({
   }
 
   // Fetch fresh signed URLs on mount and whenever photo_url changes (poll sync).
-  // We mark the fetch resolved on BOTH success and failure (with an empty list),
-  // so the loading slots always settle — a failed/empty refetch must never leave
-  // a slot spinning forever.
+  // We mark the fetch resolved on BOTH success and failure, so the loading slots
+  // always settle: a failed or empty refetch must never leave a slot spinning.
+  // A failed read is not "no photos": the card keeps the photos it already has for
+  // this place. Only a first read that fails settles to the cover fallback below.
   useEffect(() => {
     const id = location.id;
     if (!id) return;
     let cancelled = false;
     fetch(`/api/locations/${id}/photo`)
-      .then((r) => r.json())
+      .then((r) => {
+        if (!r.ok) throw new Error(`photo list failed: ${r.status}`);
+        return r.json();
+      })
       .then((data) => {
         if (!cancelled)
           setFetched({
@@ -137,7 +141,10 @@ export default function LocationCard({
           });
       })
       .catch(() => {
-        if (!cancelled) setFetched({ id, urls: [], thumbs: [], cards: [] });
+        if (!cancelled)
+          setFetched((prev) =>
+            prev.id === id ? prev : { id, urls: [], thumbs: [], cards: [] },
+          );
       });
     return () => {
       cancelled = true;

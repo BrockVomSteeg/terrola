@@ -395,9 +395,18 @@ export default function AdminPanel({
       return;
     }
     fetch(`/api/locations/${editingId}/photo`)
-      .then((r) => r.json())
+      .then((r) => {
+        // A failed read is not "no photos": keep the list and say so.
+        if (!r.ok) throw new Error(`photo list failed: ${r.status}`);
+        return r.json();
+      })
       .then((data) => setExistingPhotos(data.photos ?? []))
-      .catch(() => {});
+      .catch(() => {
+        if (mountedRef.current)
+          setPhotoError(
+            "Couldn't load this place's photos. Close and open it again.",
+          );
+      });
   }, [editingId]);
 
   // Keep the reframe preview aspect matched to the card surface — recomputed
