@@ -7,7 +7,7 @@ a map with a warm palette. You host it yourself on Next.js, Supabase and Mapbox.
 
 Demo: <https://terrola.vercel.app>
 
-![The Terrola demo: the list of places, an open place card with a drawn picture, and the map](docs/demo.jpg)
+![The Terrola demo: the list of places, an open place card with a photo, and a flat world map with photo pins](docs/demo.jpg)
 
 The hosted demo on 2026-10-13. Map: © Mapbox, © OpenStreetMap.
 
@@ -53,9 +53,11 @@ More detail: [SECURITY.md](SECURITY.md), [PRIVACY.md](PRIVACY.md),
 Counted from the repository on 2026-10-13.
 
 - 13 unit spec files under `tests/unit/access/` (count of `*.spec.ts` files).
-- 6 CI jobs in 3 workflows under `.github/workflows/`: `build`, `unit`, `cold-clone` and
-  `gates` in `build.yml`, `check` in `no-direct-supabase.yml`, `lock` in `lockfile.yml`. The
-  required checks are `build`, `check`, `unit`, `gates` and `cold-clone`.
+- 9 CI jobs in 4 workflows under `.github/workflows/`: `build`, `unit`, `cold-clone` and
+  `gates` in `build.yml`, `check` in `no-direct-supabase.yml`, `lock` in `lockfile.yml`, and
+  `target`, `axe` and `lighthouse` in `demo-quality.yml`. That workflow runs axe and
+  Lighthouse CI against the live demo after each production deploy and every week (see
+  [`docs/accessibility.md`](docs/accessibility.md)). The required checks are `build`, `check`, `unit`, `gates` and `cold-clone`.
 - 4 gate scripts in `scripts/gates/` (brand, lane ownership, personal strings, provenance).
   Three of them run in CI today: brand, provenance and lane ownership. `cold-clone` installs
   fresh with no cache and fails if an env file exists, the Mapbox token is set, or no test
@@ -113,8 +115,8 @@ From [`SPEC.md`](SPEC.md):
 
 Known gaps, listed in [SECURITY.md](SECURITY.md):
 
-- Some reads write refreshed photo links back to the table, and a failed storage listing can
-  read as "no photos".
+- A signed photo link is refreshed by a read and saved back to the table on purpose, as a
+  cache. See [SECURITY.md](SECURITY.md).
 - A signed photo link works without the password for up to 30 days.
 - The Content Security Policy is report only.
 - The data route rate limit trusts a header a caller can set. The login limit does not.

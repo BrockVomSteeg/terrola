@@ -76,11 +76,17 @@ No route file under `app/api/` imports the database client. Only
 registers a file the browser already sent to storage; a request that is not JSON gets 415.
 In a demo the store has no file storage, so the upload address and register calls answer 501.
 
-A read in live mode can also write: when a stored photo link has under 3 days left or no
+A read in live mode can also write, on purpose: when a stored photo link has under 3 days left or no
 readable end date, the read signs a new one and saves it back to the same row
 ([`live-store.ts`](app/api/_lib/live-store.ts),
 [`lib/supabase-server.ts`](lib/supabase-server.ts), `freshenCoverUrls`). It writes the two
-photo link columns and nothing else.
+photo link columns and nothing else. This is a cache: every server instance then sees the same
+link, and a photo is re-signed about once every 27 days.
+
+A storage listing that fails answers 500 and saves nothing. A signed list that comes back
+short on register, delete or reorder answers failed
+([`live-store.ts`](app/api/_lib/live-store.ts);
+[test](tests/unit/access/storage-listing.spec.ts)).
 
 ### Place search is closed in a demo
 
@@ -200,13 +206,11 @@ reports and blocks nothing. It allows `'unsafe-inline'` for scripts and styles
   key, so the checks in this file are the only thing between a request and the data
   ([`supabase/migrations/20260101000000_init.sql`](supabase/migrations/20260101000000_init.sql),
   [`lib/supabase-server.ts`](lib/supabase-server.ts)).
-- **A live read can write a refreshed photo link.** See "The data gate".
+- **A live read writes a refreshed photo link, by design.** A cache. See "The data gate".
 - **No revocation of one session.** Clearing a cookie in a browser does not end a stolen
   copy. Changing the password ends all sessions.
 - **Login limit in memory.** See "Login limits".
 - **CSP is report only.** See "Response headers".
-- **A failed storage listing can read as "no photos".** A known gap until the photo reads
-  are reworked ([`live-store.ts`](app/api/_lib/live-store.ts)).
 - **Data route limits trust a forgeable header.** `checkRateLimit` reads `x-forwarded-for`
   as sent by the caller ([`app/api/_lib/rate-limit.ts`](app/api/_lib/rate-limit.ts),
   `getIp`). The login limit does not. Treat the data route limits as light brakes.

@@ -10,11 +10,12 @@ The map and the access rules:
 - A write token tied to the session: [PR 12](../../pull/12).
 - The Store contract and the demo's in-memory store: [PR 14](../../pull/14).
 - One data gate that every read, place write and photo write goes through: [PR 18](../../pull/18), [PR 37](../../pull/37), [PR 39](../../pull/39).
+- A storage failure is a failure, never an empty photo list: [PR 42](../../pull/42).
 
 The demo:
 
 - The demo screen offers nothing it cannot do: [PR 21](../../pull/21).
-- Twelve demo pictures drawn in code: [PR 30](../../pull/30), [PR 32](../../pull/32).
+- Twelve demo pictures drawn in code: [PR 30](../../pull/30), [PR 32](../../pull/32). Replaced by twelve free public domain photos from around the world on a flat world map: [PR 44](../../pull/44).
 - A plain pin in the empty list and a neutral place name: [PR 24](../../pull/24).
 - The Mapbox wordmark and attribution stay visible: [PR 34](../../pull/34), [PR 35](../../pull/35).
 
@@ -22,6 +23,8 @@ Checks and the repository:
 
 - Unit tests and gates on every pull request: [PR 7](../../pull/7).
 - A provenance gate, a cold clone job, and issue and pull request forms: [PR 40](../../pull/40).
+- Accessibility (axe) and speed (Lighthouse) checks on the live demo: [PR 43](../../pull/43).
+- Fonts kept in the repository, and a home screen icon: [PR 41](../../pull/41).
 - Cleanup of CI ignore lines and the browser suite wording: [PR 26](../../pull/26), [PR 27](../../pull/27).
 - The example settings file: [PR 29](../../pull/29).
 

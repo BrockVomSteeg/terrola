@@ -34,6 +34,11 @@ On every pull request to `main` ([`.github/workflows/`](.github/workflows/)):
 - `lock` in [`lockfile.yml`](.github/workflows/lockfile.yml): runs when `package.json` or
   that workflow file changes, or when started by hand, and uploads the resolved lockfile.
 
+- `demo-quality` in [`demo-quality.yml`](.github/workflows/demo-quality.yml): axe
+  (`@axe-core/playwright`) and Lighthouse CI against the live demo, after each production
+  deploy and every week. It is not a required check. See
+  [`docs/accessibility.md`](docs/accessibility.md).
+
 GitHub code scanning (CodeQL, default setup) also runs on the repository. The required checks
 are `build`, `check`, `unit`, `gates` and `cold-clone`.
 
