@@ -88,18 +88,17 @@ test.describe("desktop", () => {
     await waitForMap(page);
     const row = placeRows(page, ".sidebar-desktop").first();
     await expect(row).toBeVisible();
-    // focus() does nothing on an element that cannot take focus, so this proves Tab
-    // can reach the row.
+    // In the tab order (a tabIndex of -1 could still take focus() but never Tab).
+    expect(await row.evaluate((el) => (el as HTMLElement).tabIndex)).toBeGreaterThanOrEqual(0);
     await row.focus();
     await expect(row).toBeFocused();
     await page.keyboard.press("Enter");
     await expect(page.locator(".location-card")).toBeVisible({ timeout: 5_000 });
 
+    // Every demo place has a photo, so a missing one is a failure, not a skip.
     const photo = page.locator(".location-card .photo-open").first();
-    test.skip(
-      (await photo.count()) === 0,
-      "The first place has no photo, so the lightbox cannot be reached",
-    );
+    await expect(photo).toHaveCount(1);
+    expect(await photo.evaluate((el) => (el as HTMLElement).tabIndex)).toBeGreaterThanOrEqual(0);
     await photo.focus();
     await expect(photo).toBeFocused();
     await page.keyboard.press(" ");
