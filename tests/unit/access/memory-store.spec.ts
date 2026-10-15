@@ -55,7 +55,7 @@ test.describe("the memory store", () => {
     expect((await two.getLocation(id)).ok).toBe(true);
     // And the fixtures themselves are untouched.
     expect(DEMO_LOCATIONS[0].id).toBe(id);
-    expect(DEMO_LOCATIONS).toHaveLength(12);
+    expect(DEMO_LOCATIONS).toHaveLength(18);
   });
 
   test("uses the clock and the id maker it is given", async () => {
@@ -220,8 +220,8 @@ test.describe("the demo data", () => {
   ];
   const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 
-  test("is twelve pins with fixed, distinct ids", () => {
-    expect(DEMO_LOCATIONS).toHaveLength(12);
+  test("is eighteen pins with fixed, distinct ids", () => {
+    expect(DEMO_LOCATIONS).toHaveLength(18);
     const ids = DEMO_LOCATIONS.map((location) => location.id);
     expect(new Set(ids).size).toBe(ids.length);
     for (const id of ids) expect(id).toMatch(UUID);
@@ -256,7 +256,7 @@ test.describe("the demo data", () => {
         expect(apart, `${title} near ${testLat}, ${testLng}`).toBeGreaterThan(2);
       }
     }
-    // Twelve different spots, not one pin hiding another.
+    // Eighteen different spots, not one pin hiding another.
     const spots = DEMO_LOCATIONS.map(({ lat, lng }) => `${lat},${lng}`);
     expect(new Set(spots).size).toBe(spots.length);
   });
