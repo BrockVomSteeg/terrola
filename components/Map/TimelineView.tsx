@@ -58,7 +58,7 @@ export default function TimelineView({
             fontSize: "11px",
             letterSpacing: "1.5px",
             textTransform: "uppercase",
-            color: "#C17F5A",
+            color: "#8B5E3C",
             width: "100%",
           }}
         >
@@ -71,7 +71,7 @@ export default function TimelineView({
           style={{
             padding: "48px 20px",
             textAlign: "center",
-            color: "#9B8578",
+            color: "#786459",
             fontFamily: "var(--font-cormorant), serif",
             fontStyle: "italic",
             fontSize: "16px",
@@ -202,7 +202,7 @@ function TimelineRow({
             fontFamily: "var(--font-cormorant), serif",
             fontStyle: "italic",
             fontSize: "12px",
-            color: "#9B8578",
+            color: "#786459",
             margin: "0 0 5px",
           }}
         >

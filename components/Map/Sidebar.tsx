@@ -333,7 +333,7 @@ function SidebarContent({
               fontSize: "11px",
               textTransform: "uppercase",
               letterSpacing: "1.5px",
-              color: "#9B8578",
+              color: "#786459",
               margin: 0,
             }}
           >
@@ -364,7 +364,7 @@ function SidebarContent({
                 borderRadius: "6px",
                 border: "none",
                 background: activeView === "map" ? "#FAF6F0" : "transparent",
-                color: activeView === "map" ? "#6B4F3A" : "#9B8578",
+                color: activeView === "map" ? "#6B4F3A" : "#786459",
                 cursor: "pointer",
                 display: "flex",
                 alignItems: "center",
@@ -389,7 +389,7 @@ function SidebarContent({
                 border: "none",
                 background:
                   activeView === "timeline" ? "#FAF6F0" : "transparent",
-                color: activeView === "timeline" ? "#6B4F3A" : "#9B8578",
+                color: activeView === "timeline" ? "#6B4F3A" : "#786459",
                 cursor: "pointer",
                 display: "flex",
                 alignItems: "center",
@@ -455,7 +455,7 @@ function SidebarContent({
                   background: selectedCategory
                     ? "rgba(193,127,90,0.12)"
                     : "transparent",
-                  color: selectedCategory ? "#C17F5A" : "#9B8578",
+                  color: selectedCategory ? "#8B5E3C" : "#786459",
                   fontFamily: "var(--font-quicksand), sans-serif",
                   fontSize: "9px",
                   letterSpacing: "1.2px",
@@ -525,7 +525,7 @@ function SidebarContent({
                       style={{
                         fontFamily: "var(--font-quicksand), sans-serif",
                         fontSize: "10px",
-                        color: "#9B8578",
+                        color: "#786459",
                         marginRight: !selectedCategory ? "8px" : "0",
                       }}
                     >
@@ -534,7 +534,7 @@ function SidebarContent({
                     {!selectedCategory && (
                       <span
                         style={{
-                          color: "#C17F5A",
+                          color: "#8B5E3C",
                           fontSize: "11px",
                           marginLeft: "8px",
                         }}
@@ -600,14 +600,14 @@ function SidebarContent({
                           style={{
                             fontFamily: "var(--font-quicksand), sans-serif",
                             fontSize: "10px",
-                            color: "#9B8578",
+                            color: "#786459",
                             marginRight: isActive ? "8px" : "0",
                           }}
                         >
                           {count}
                         </span>
                         {isActive && (
-                          <span style={{ color: "#C17F5A", fontSize: "11px" }}>
+                          <span style={{ color: "#8B5E3C", fontSize: "11px" }}>
                             ✓
                           </span>
                         )}
@@ -655,7 +655,7 @@ function SidebarContent({
                 style={{
                   padding: "32px 20px",
                   textAlign: "center",
-                  color: "rgba(92,61,46,0.5)",
+                  color: "#786459",
                   fontFamily: "var(--font-quicksand), sans-serif",
                   fontSize: "13px",
                   letterSpacing: "1px",
@@ -740,7 +740,7 @@ function EmptyState() {
         style={{
           fontFamily: "var(--font-quicksand), sans-serif",
           fontSize: "11px",
-          color: "#9B8578",
+          color: "#786459",
           margin: 0,
           letterSpacing: "1.2px",
           textTransform: "uppercase",
@@ -786,21 +786,33 @@ function SidebarItem({
   const [hovered, setHovered] = useState(false);
   const cat = CATEGORIES[location.category] ?? CATEGORIES.everyday;
 
+  // A real button, so Tab reaches every place and Enter or Space opens it
+  // (docs/accessibility.md). The focus ring comes from `.place-row` in globals.css.
+  // Spans with display block stand in for paragraphs, which a button may not hold.
   return (
-    <div
+    <button
+      type="button"
       data-testid={`sidebar-loc-${location.id}`}
+      className="place-row"
       onClick={onClick}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
-      onFocus={(e) => e.currentTarget.blur()}
-      tabIndex={-1}
       style={{
+        display: "block",
+        width: "100%",
+        margin: 0,
+        textAlign: "left",
+        font: "inherit",
+        color: "inherit",
+        borderRadius: 0,
         padding: "14px 20px",
+        borderTop: "none",
+        borderLeft: "none",
+        borderRight: "none",
         borderBottom: "1px solid rgba(193,127,90,0.08)",
         cursor: "pointer",
         background: hovered ? "rgba(193,127,90,0.05)" : "transparent",
         transition: "background 0.15s",
-        outline: "none",
       }}
     >
       <span
@@ -821,8 +833,9 @@ function SidebarItem({
       >
         {cat.emoji} {cat.label}
       </span>
-      <p
+      <span
         style={{
+          display: "block",
           fontFamily: "var(--font-quicksand), sans-serif",
           fontSize: "13px",
           fontWeight: 600,
@@ -831,20 +844,21 @@ function SidebarItem({
         }}
       >
         {location.title}
-      </p>
-      <p
+      </span>
+      <span
         style={{
+          display: "block",
           fontFamily: "var(--font-cormorant), serif",
           fontStyle: "italic",
           fontSize: "12px",
-          color: "#9B8578",
+          color: "#786459",
           margin: "0 0 4px",
         }}
       >
         {location.date_label}
-      </p>
+      </span>
       {location.description && (
-        <p
+        <span
           className="line-clamp-2"
           style={{
             fontFamily: "var(--font-quicksand), sans-serif",
@@ -855,9 +869,9 @@ function SidebarItem({
           }}
         >
           {location.description}
-        </p>
+        </span>
       )}
-    </div>
+    </button>
   );
 }
 

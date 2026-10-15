@@ -42,8 +42,12 @@ async function waitForMap(page: Page) {
 }
 
 /**
- * Waits until an element is fully shown: present, opacity 1 and no running animation or
- * transition in it. Contrast checks on a half faded element give false results.
+ * Waits until an element is fully shown: present, opacity 1 and no fade or slide still
+ * running in it. Contrast checks on a half faded element give false results.
+ *
+ * Looping animations are not waited for: they never end. A photo's loading shimmer
+ * (FramedPhoto.tsx) loops for as long as the card is open, so waiting for it made every
+ * place card check time out.
  */
 async function settle(page: Page, selector: string) {
   await page.waitForFunction(
@@ -51,9 +55,10 @@ async function settle(page: Page, selector: string) {
       const el = document.querySelector(sel);
       if (!el) return false;
       if (getComputedStyle(el).opacity !== "1") return false;
-      return el
-        .getAnimations({ subtree: true })
-        .every((a) => a.playState !== "running");
+      return el.getAnimations({ subtree: true }).every((a) => {
+        if (a.playState !== "running") return true;
+        return a.effect?.getComputedTiming().iterations === Infinity;
+      });
     },
     selector,
     { timeout: 10_000 },
@@ -77,6 +82,30 @@ test.describe("desktop", () => {
     await expect(page.locator(".location-card")).toBeVisible({ timeout: 5_000 });
     await settle(page, ".location-card");
     await expectNoViolations(page, "desktop-place-card");
+  });
+
+  test("keyboard opens a place and its photo", async ({ page }) => {
+    await waitForMap(page);
+    const row = placeRows(page, ".sidebar-desktop").first();
+    await expect(row).toBeVisible();
+    // focus() does nothing on an element that cannot take focus, so this proves Tab
+    // can reach the row.
+    await row.focus();
+    await expect(row).toBeFocused();
+    await page.keyboard.press("Enter");
+    await expect(page.locator(".location-card")).toBeVisible({ timeout: 5_000 });
+
+    const photo = page.locator(".location-card .photo-open").first();
+    test.skip(
+      (await photo.count()) === 0,
+      "The first place has no photo, so the lightbox cannot be reached",
+    );
+    await photo.focus();
+    await expect(photo).toBeFocused();
+    await page.keyboard.press(" ");
+    await expect(page.locator(".photo-lightbox")).toBeVisible({ timeout: 5_000 });
+    await page.keyboard.press("Escape");
+    await expect(page.locator(".photo-lightbox")).toBeHidden({ timeout: 5_000 });
   });
 
   test("photo lightbox", async ({ page }) => {

@@ -134,7 +134,7 @@ function Stat({ value, label }: { value: string; label: string }) {
           fontSize: "10px",
           textTransform: "uppercase",
           letterSpacing: "1.5px",
-          color: "#9B8578",
+          color: "#786459",
           lineHeight: 1,
         }}
       >

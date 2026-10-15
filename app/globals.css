@@ -126,6 +126,15 @@ body {
   overflow: hidden;
 }
 
+/* Keyboard focus ring for the place rows in the list and the photos in a card.
+   Drawn inside the element so the card's rounded, clipped edge never hides it.
+   Only on keyboard focus: a mouse click or a tap shows no ring. */
+.place-row:focus-visible,
+.photo-open:focus-visible {
+  outline: 2px solid #8b5e3c;
+  outline-offset: -2px;
+}
+
 /* Caret fix: overrides Mapbox's injected <style> tag regardless of specificity */
 * {
   caret-color: transparent !important;

@@ -31,11 +31,14 @@ artifacts for 7 days and are not uploaded anywhere else.
 It runs [axe](https://github.com/dequelabs/axe-core) through `@axe-core/playwright` with the
 rule tags `wcag2a`, `wcag2aa`, `wcag21a` and `wcag21aa`, on these screens:
 
-- desktop: the map page on load, a place card opened from the list, the photo lightbox;
+- desktop: the map page on load, a place card opened from the list, the photo lightbox,
+  and a place and its photo opened with the keyboard only (no axe scan, a focus check);
 - phone sized (375 by 812): the map page on load, the list view, a place card opened from
   the list.
 
 Each check waits until the screen has finished fading in, then fails on any violation.
+Looping animations, such as a photo's loading shimmer, are not waited for, because they
+never end.
 Nothing is excluded today. If a violation ever comes from inside Mapbox's own map or
 controls, which this project cannot change, only that node is excluded, by selector, with
 a comment that says why.
@@ -93,9 +96,10 @@ Mapbox keyboard controls, when the map has keyboard focus:
 - plus (or equals) zooms in, minus zooms out;
 - shift with the left or right arrow rotates, shift with the up or down arrow tilts.
 
-Known gap: today the rows in the list and the photo in a place card respond to a click or
-a tap but cannot be reached with the Tab key. Until that is fixed, a keyboard only visitor
-cannot open a place. axe does not report this, because the rows are not marked as buttons.
+Each row in the list is a button: Tab reaches it, and Enter or Space opens the place card.
+Each photo in a card works the same way and opens the lightbox. A ring shows which one has
+keyboard focus. The test "keyboard opens a place and its photo" in `tests/e2e/a11y.spec.ts`
+checks this path on the demo.
 
 ## Manual checklist before each release
 
