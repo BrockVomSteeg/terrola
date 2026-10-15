@@ -48,6 +48,13 @@ class CsrfError extends Error {
   }
 }
 
+class DemoReadOnlyError extends Error {
+  constructor() {
+    super("This demo is read only. Changes are not saved.");
+    this.name = "DemoReadOnlyError";
+  }
+}
+
 async function apiFetch<T>(path: string, opts?: RequestInit): Promise<T> {
   const method = (opts?.method ?? "GET").toUpperCase();
   const isStateChanging = method !== "GET" && method !== "HEAD";
@@ -73,7 +80,14 @@ async function apiFetch<T>(path: string, opts?: RequestInit): Promise<T> {
       window.location.reload();
     throw new SessionExpiredError();
   }
-  if (res.status === 403) throw new CsrfError();
+  if (res.status === 403) {
+    // The read only demo answers every write with 403 { error: "demo_read_only" }.
+    const body = (await res.json().catch(() => null)) as {
+      error?: unknown;
+    } | null;
+    if (body?.error === "demo_read_only") throw new DemoReadOnlyError();
+    throw new CsrfError();
+  }
 
   if (!res.ok) {
     const text = await res.text().catch(() => "");

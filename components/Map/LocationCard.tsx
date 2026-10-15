@@ -77,6 +77,7 @@ export default function LocationCard({
   // identically on the card / timeline / edit grid.
   const [reframePhotoUrl, setReframePhotoUrl] = useState<string | null>(null);
   const [reframeSaving, setReframeSaving] = useState(false);
+  const [reframeError, setReframeError] = useState<string | null>(null);
   const [reframeAspect, setReframeAspect] = useState(1.65);
   // Fresh signed URLs (full + thumbnail), tagged with the location they belong
   // to so a previous pin's photos can never flash when you tap a different pin.
@@ -268,7 +269,20 @@ export default function LocationCard({
     setActivePhotoIndex(0);
     setSelectedPhotoIndex(null);
     setReframePhotoUrl(null);
+    setReframeError(null);
   }, [location.id]);
+
+  // Escape closes the card, like the lightbox. While the lightbox or the
+  // reframe editor is open, Escape belongs to that layer and the card stays.
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      if (selectedPhotoIndex !== null || reframePhotoUrl) return;
+      onClose();
+    };
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [onClose, selectedPhotoIndex, reframePhotoUrl]);
 
   // Keep the reframe preview aspect matched to the card surface (WYSIWYG) —
   // recomputed when the editor opens and on resize/rotate, all client-side.
@@ -317,13 +331,16 @@ export default function LocationCard({
       return;
     }
     setReframeSaving(true);
+    setReframeError(null);
     try {
       const updated = await api.setPhotoOffsets(location.id, newOffsets);
       onLocationUpdated?.(updated);
       setReframePhotoUrl(null);
-    } catch {
+    } catch (err) {
       // Leave the overlay open so the chosen framing isn't lost on a transient
-      // failure; the user can hit Save again.
+      // failure, and say so; the user can hit Save again.
+      console.warn("[app] reframe save failed", err);
+      setReframeError("Couldn't save the framing. Try again.");
     } finally {
       setReframeSaving(false);
     }
@@ -747,10 +764,14 @@ export default function LocationCard({
           }
           previewAspect={reframeAspect}
           saving={reframeSaving}
+          error={reframeError}
           fallbackEmoji={cat.emoji}
           fallbackBg={cat.bg}
           onSave={handleReframeSave}
-          onClose={() => setReframePhotoUrl(null)}
+          onClose={() => {
+            setReframePhotoUrl(null);
+            setReframeError(null);
+          }}
         />
       )}
     </>
