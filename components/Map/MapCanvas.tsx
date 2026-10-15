@@ -936,7 +936,7 @@ export default function MapCanvas({
             background: "transparent",
             border: "1px solid #C17F5A",
             borderRadius: "100px",
-            color: "#C17F5A",
+            color: "#8B5E3C",
             cursor: "pointer",
             fontSize: "12px",
             letterSpacing: "1.5px",
@@ -1071,7 +1071,7 @@ export default function MapCanvas({
             <span
               style={{
                 fontSize: "10px",
-                color: "#9B8578",
+                color: "#786459",
                 fontFamily: "var(--font-quicksand), sans-serif",
                 background: "rgba(193,127,90,0.08)",
                 border: "1px solid rgba(193,127,90,0.2)",
@@ -1087,7 +1087,7 @@ export default function MapCanvas({
             <span
               style={{
                 fontSize: "10px",
-                color: "#9B8578",
+                color: "#786459",
                 fontFamily: "var(--font-quicksand), sans-serif",
               }}
             >

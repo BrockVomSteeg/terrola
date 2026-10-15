@@ -280,6 +280,18 @@ export default function LocationCard({
     return () => window.removeEventListener("resize", update);
   }, [reframePhotoUrl, knownCount]);
 
+  // Enter or Space on a focused photo opens it, like a click (docs/accessibility.md).
+  // The photos stay divs with a button role: they hold FramedPhoto's divs, which a
+  // real button may not contain.
+  function openPhotoOnKey(
+    e: React.KeyboardEvent<HTMLDivElement>,
+    index: number,
+  ) {
+    if (e.key !== "Enter" && e.key !== " ") return;
+    e.preventDefault();
+    setSelectedPhotoIndex(index);
+  }
+
   function handleStripScroll(e: React.UIEvent<HTMLDivElement>) {
     const { scrollLeft, clientWidth } = e.currentTarget;
     if (clientWidth > 0)
@@ -417,6 +429,11 @@ export default function LocationCard({
                 {slots.map((slot, i) => (
                   <div
                     key={i}
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`Open photo ${i + 1} of ${knownCount}`}
+                    className="photo-open"
+                    onKeyDown={(e) => openPhotoOnKey(e, i)}
                     style={{
                       position: "relative",
                       width: "100%",
@@ -479,7 +496,12 @@ export default function LocationCard({
           {/* Single photo — tap to open lightbox */}
           {knownCount === 1 && (
             <div
+              role="button"
+              tabIndex={0}
+              aria-label={`Open photo of ${location.title}`}
+              className="photo-open"
               onClick={() => setSelectedPhotoIndex(0)}
+              onKeyDown={(e) => openPhotoOnKey(e, 0)}
               style={{
                 position: "relative",
                 height: "160px",
@@ -521,7 +543,7 @@ export default function LocationCard({
                 border: "none",
                 cursor: "pointer",
                 fontSize: "18px",
-                color: "#C0A898",
+                color: "#786459",
                 lineHeight: 1,
                 padding: "2px 6px",
               }}
@@ -570,7 +592,7 @@ export default function LocationCard({
                 fontFamily: "var(--font-cormorant), serif",
                 fontStyle: "italic",
                 fontSize: "15px",
-                color: "#9B8578",
+                color: "#786459",
                 margin: 0,
               }}
             >
@@ -629,7 +651,7 @@ export default function LocationCard({
                       background: "none",
                       border: "none",
                       cursor: "pointer",
-                      color: "#9B8578",
+                      color: "#786459",
                       padding: "4px 6px",
                       display: "flex",
                       alignItems: "center",
@@ -640,7 +662,7 @@ export default function LocationCard({
                     }}
                     onMouseLeave={(e) => {
                       (e.currentTarget as HTMLButtonElement).style.color =
-                        "#9B8578";
+                        "#786459";
                     }}
                   >
                     <PencilIcon />
@@ -656,7 +678,7 @@ export default function LocationCard({
                       background: "none",
                       border: "none",
                       cursor: "pointer",
-                      color: "#9B8578",
+                      color: "#786459",
                       padding: "4px 6px",
                       display: "flex",
                       alignItems: "center",
@@ -667,7 +689,7 @@ export default function LocationCard({
                     }}
                     onMouseLeave={(e) => {
                       (e.currentTarget as HTMLButtonElement).style.color =
-                        "#9B8578";
+                        "#786459";
                     }}
                   >
                     <TrashIcon />

@@ -10,12 +10,15 @@ export const DEFAULT_BOUNDS: [[number, number], [number, number]] = [
   [142, 50],
 ];
 
+// Each `color` is pill text on its own `bg`. It meets WCAG AA (4.5 to 1) on that tint
+// over the sidebar and card colour #FAF6F0, also on a hovered or highlighted row
+// (SPEC R13, docs/accessibility.md).
 export const CATEGORIES = {
   food: {
     label: "Food",
     emoji: "🍽️",
     bg: "rgba(193,127,90,0.12)",
-    color: "#8B5E3C",
+    color: "#825838",
   },
   nightout: {
     label: "Night Out",
@@ -33,7 +36,7 @@ export const CATEGORIES = {
     label: "Beach",
     emoji: "🏖️",
     bg: "rgba(70,140,160,0.12)",
-    color: "#3A7A8A",
+    color: "#316774",
   },
   adventure: {
     label: "Adventure",
@@ -57,7 +60,7 @@ export const CATEGORIES = {
     label: "Milestone",
     emoji: "✨",
     bg: "rgba(180,160,80,0.12)",
-    color: "#7A6B20",
+    color: "#70621D",
   },
   concert: {
     label: "Concert",
