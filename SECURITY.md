@@ -161,7 +161,9 @@ no cookie.
 The counters live in each server instance's memory. A cold start clears them and each
 instance counts alone. This is a brake, not a lock. A hosted deployment should also use the
 host's own firewall rate limit ([`rate-limit.ts`](app/api/_lib/rate-limit.ts), header
-comment).
+comment). The public demo does: a Vercel firewall rule lets each IP address make 100
+requests a minute to `/api/` and answers 429 after that (checked on 2026-10-15: 100 passed,
+the next 10 got 429).
 
 ### Passwords over 72 bytes are refused
 
