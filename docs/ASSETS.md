@@ -26,7 +26,7 @@ source and licence for each one ([`SPEC.md`](../SPEC.md)).
 The twelve demo photos are real photographs from Wikimedia Commons, each dedicated to the public
 domain by its author (CC0 1.0), so no credit is required; the author is named here anyway. They are
 named like an uploaded photo (the place's id, then 13 digits, then `.jpg`) so the app handles them
-as it handles real ones. A test checks that each is a plain JPEG, 1400 pixels at most on its
+as it handles real ones. No person is the subject of any photo. A test checks that each is a plain JPEG, 1400 pixels at most on its
 longest side, with no metadata
 ([`memory-store.spec.ts`](../tests/unit/access/memory-store.spec.ts)).
 

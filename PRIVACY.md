@@ -7,12 +7,13 @@ nothing about how the maintainer or anyone else runs a copy.
 
 The demo stores nothing about visitors.
 
-- Its data is twelve made up places in mainland Portugal, held in server memory
+- Its data is twelve made up visits to public places around the world, held in server memory
   ([`lib/demo/fixtures.ts`](lib/demo/fixtures.ts),
   [`lib/demo/memory-store.ts`](lib/demo/memory-store.ts);
   [test](tests/unit/access/memory-store.spec.ts), "is twelve pins with fixed, distinct ids").
-- Its pictures are twelve drawings made in code, kept as files in this repository and served
-  by the app itself. They are not photographs and show no person
+- Its pictures are twelve real photographs of public places from Wikimedia Commons, each
+  dedicated to the public domain (CC0 1.0), with their metadata removed. No person is the
+  subject of any photo. They are kept as files in this repository and served by the app itself
   ([`public/demo/location-photos/`](public/demo/location-photos/),
   [`docs/ASSETS.md`](docs/ASSETS.md)).
 - The read only demo accepts no writes, so a visitor cannot add anything
