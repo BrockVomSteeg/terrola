@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.2.0 (2026-10-15)
+
+- Licensed under MIT or Apache-2.0, at your option, as the Rust project does. Release 0.1.0
+  stays MIT: [PR 50](../../../pull/50).
+- Six more demo places in Kyoto, each with a free public domain photo taken there, so the map
+  shows one busy area as well as places around the world (eighteen in all):
+  [PR 53](../../../pull/53).
+- A roadmap of ideas for later: [PR 51](../../../pull/51).
+- The README picture shows the new demo, and the map opens with every pin in view:
+  [PR 49](../../../pull/49).
+- The live demo checks no longer pass a commit from one job to the next, which cleared three
+  code scanning alerts: [PR 52](../../../pull/52).
+- The public demo's speed limit, and what it does not cover: [PR 54](../../../pull/54),
+  [PR 55](../../../pull/55).
+- Patched versions of two packages the speed check tool uses: [PR 56](../../../pull/56).
+- Dependency updates: [PR 2](../../../pull/2), [PR 3](../../../pull/3),
+  [PR 38](../../../pull/38).
+
 ## 0.1.0 (2026-10-15)
 
 The map and the access rules:
@@ -27,6 +45,12 @@ Checks and the repository:
 - Fonts kept in the repository, and a home screen icon: [PR 41](../../../pull/41).
 - Cleanup of CI ignore lines and the browser suite wording: [PR 26](../../../pull/26), [PR 27](../../../pull/27).
 - The example settings file: [PR 29](../../../pull/29).
+- Colour contrast to WCAG AA and list rows that open from the keyboard:
+  [PR 46](../../../pull/46).
+- No package cache in the live demo checks, and the Mapbox licence notice:
+  [PR 47](../../../pull/47).
+- Fixes from the final sweep: every uploaded photo is redrawn so no location data is kept,
+  exact photo names, and client fixes: [PR 48](../../../pull/48).
 
 Docs:
 
@@ -34,3 +58,4 @@ Docs:
 - Security, privacy, threat model, assets and contributing: [PR 17](../../../pull/17).
 - The map description: [PR 25](../../../pull/25).
 - The demo address, the pictures and the numbers: [PR 33](../../../pull/33), [PR 36](../../../pull/36).
+- A fact check of the docs against the code: [PR 45](../../../pull/45).
