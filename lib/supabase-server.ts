@@ -264,11 +264,16 @@ export async function freshenCoverUrls<
 /**
  * Storage object names for a location, in stable alphabetical order. Used ONLY
  * as the existence set and the append order — never as the display order.
+ *
+ * Throws when storage answers with an error. A failed listing must never read
+ * as "no photos": a caller would save or show an empty photo list. Every caller
+ * runs inside a store method, which answers a throw as `failed`.
  */
 export async function listLocationPhotoFiles(id: string): Promise<string[]> {
-  const { data } = await getSupabaseAdmin()
+  const { data, error } = await getSupabaseAdmin()
     .storage.from(PHOTO_BUCKET)
     .list("", { search: id, limit: 200 });
+  if (error) throw new Error("storage listing failed");
   if (!data?.length) return [];
   return (
     data
@@ -289,11 +294,15 @@ export async function listLocationPhotoFiles(id: string): Promise<string[]> {
 /**
  * Every storage object for a location INCLUDING thumbnails — used by the delete
  * cleanup so a removed location leaves no orphaned `.thumb` objects behind.
+ *
+ * Throws when storage answers with an error, like listLocationPhotoFiles. The
+ * delete cleanup catches it, logs it and still removes the files it knows of.
  */
 export async function listAllLocationObjects(id: string): Promise<string[]> {
-  const { data } = await getSupabaseAdmin()
+  const { data, error } = await getSupabaseAdmin()
     .storage.from(PHOTO_BUCKET)
     .list("", { search: id, limit: 200 });
+  if (error) throw new Error("storage listing failed");
   if (!data?.length) return [];
   return data.filter((f) => f.name.startsWith(id + "-")).map((f) => f.name);
 }

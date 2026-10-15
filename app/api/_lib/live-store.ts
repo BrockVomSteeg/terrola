@@ -76,6 +76,8 @@ async function rebuildPhotos(
   thumbs: string[];
   cards: string[];
   stored: string[];
+  /** False when signing dropped a photo of the order: the list is short. */
+  complete: boolean;
 }> {
   const stored = (await storedPhotos(id)) ?? [];
   seedPhotoUrlCache(stored);
@@ -91,7 +93,14 @@ async function rebuildPhotos(
     .filter((n): n is string => !!n);
   const thumbs = await signThumbsForFiles(signedNames);
   const cards = await signCardsForFiles(signedNames);
-  return { photo_url: photos[0] ?? null, photos, thumbs, cards, stored };
+  return {
+    photo_url: photos[0] ?? null,
+    photos,
+    thumbs,
+    cards,
+    stored,
+    complete: photos.length === order.length,
+  };
 }
 
 /**
@@ -278,13 +287,15 @@ const locationWrites: Pick<
       if (photoOrder !== undefined) {
         const order = await resolvePhotoOrder(id, photoOrder);
         const signed = await signPhotoFiles(order);
-        // A storage list that failed reads as "no photos" (listLocationPhotoFiles),
-        // and so does a signing step that failed for every photo. A reorder names
-        // at least one photo, so an empty result here is a failure, never an order:
-        // saving it would erase the location's photos.
-        if (signed.length === 0) return refused("failed");
+        // A failed storage listing throws (listLocationPhotoFiles) and ends as
+        // `failed` below. A signing step that failed comes back as a short list
+        // (signPhotoFiles drops what it cannot sign): saving it would drop photos
+        // from the list. A reorder names at least one photo, so an empty result is
+        // a failure too, never an order.
+        if (signed.length === 0 || signed.length !== order.length)
+          return refused("failed");
         updates.photos = signed;
-        updates.photo_url = signed[0] ?? null;
+        updates.photo_url = signed[0];
       }
 
       const { data, error } = await getSupabaseAdmin()
@@ -460,10 +471,12 @@ const photoWrites: Pick<
       // Give storage a moment to make the just-PUT object listable.
       await new Promise((r) => setTimeout(r, 300));
       const ensureName = path.split("/").pop() ?? path;
-      const { photo_url, photos, thumbs, cards } = await rebuildPhotos(
+      const { photo_url, photos, thumbs, cards, complete } = await rebuildPhotos(
         id,
         ensureName,
       );
+      // A photo that did not sign would drop out of the saved list: save nothing.
+      if (!complete) return refused("failed");
       const saved = await persistPhotos(id, photo_url, photos);
       if (!saved) {
         return refused("failed");
@@ -509,7 +522,9 @@ const photoWrites: Pick<
 
       // Removed object is gone from storage → resolvePhotoOrder drops it. The
       // removed photo's orphaned `.thumb` + `.card` are cleaned up above (best-effort).
-      const { photo_url, photos, thumbs, cards } = await rebuildPhotos(id);
+      const { photo_url, photos, thumbs, cards, complete } = await rebuildPhotos(id);
+      // A photo that did not sign would drop out of the saved list: save nothing.
+      if (!complete) return refused("failed");
       const saved = await persistPhotos(id, photo_url, photos);
       if (!saved) {
         return refused("failed");
