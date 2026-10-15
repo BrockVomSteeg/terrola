@@ -120,12 +120,10 @@ A secret under 16 characters counts as no secret.
 
 ## Known gaps
 
-- The data gate (SPEC R17, [`lib/demo/gate.ts`](../lib/demo/gate.ts)) covers reads only. The
-  write handlers call the database directly after the proxy and token checks, so a new write
-  route that forgot the proxy would not be caught by a second check.
-- For the same reason saving fails in `demo-writable`: the write handlers are not wired to the
-  in memory store.
-- A signed photo link works without a session for up to 30 days, and a live read can save a
+- The data gate (SPEC R17, [`lib/demo/gate.ts`](../lib/demo/gate.ts)) now covers reads and
+  writes. Every route today asks the gate, so a route the proxy list forgot still meets the
+  store's own check. Nothing in CI stops a new route from importing the database client itself.
+- A signed photo link works without a session for up to 30 days, and a live read saves a
   refreshed link back to its row ([`live-store.ts`](../app/api/_lib/live-store.ts)).
 - The server's database key bypasses row level security, so the checks in the app are the only
   gate in front of the data

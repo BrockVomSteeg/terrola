@@ -24,12 +24,23 @@ On every pull request to `main` ([`.github/workflows/`](.github/workflows/)):
 - `build` in [`build.yml`](.github/workflows/build.yml): type check and the Next.js build.
 - `unit` in [`build.yml`](.github/workflows/build.yml): `npm test`, with no browser, no
   network and no env file.
-- `gates` in [`build.yml`](.github/workflows/build.yml): the brand gate and the lane
+- `gates` in [`build.yml`](.github/workflows/build.yml): the brand gate, the provenance gate
+  (every file under `public/` is listed in [`docs/ASSETS.md`](docs/ASSETS.md)) and the lane
   ownership gate.
+- `cold-clone` in [`build.yml`](.github/workflows/build.yml): a fresh install with no cache.
+  It fails when an env file exists, the Mapbox token is set, or no test passed.
 - `check` in [`no-direct-supabase.yml`](.github/workflows/no-direct-supabase.yml): fails if
   Supabase is imported outside `app/api/*` and `lib/supabase-server.ts`.
 - `lock` in [`lockfile.yml`](.github/workflows/lockfile.yml): runs when `package.json` or
   that workflow file changes, or when started by hand, and uploads the resolved lockfile.
+
+- `demo-quality` in [`demo-quality.yml`](.github/workflows/demo-quality.yml): axe
+  (`@axe-core/playwright`) and Lighthouse CI against the live demo, after each production
+  deploy and every week. It is not a required check. See
+  [`docs/accessibility.md`](docs/accessibility.md).
+
+GitHub code scanning (CodeQL, default setup) also runs on the repository. The required checks
+are `build`, `check`, `unit`, `gates` and `cold-clone`.
 
 ## Run the unit tests on a fresh clone
 
@@ -47,3 +58,5 @@ No env file and no Mapbox token are needed, and zero tests run counts as a failu
 - Never commit a secret or a real person's details. Use made up data.
 - Public text (README, docs, UI strings) has no em dashes and no en dashes (SPEC R16).
 - Report security problems privately: see [SECURITY.md](SECURITY.md).
+- Be kind. Conduct problems are reported as described in
+  [docs/CODE_OF_CONDUCT.md](docs/CODE_OF_CONDUCT.md).
