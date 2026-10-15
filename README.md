@@ -7,9 +7,9 @@ a map with a warm palette. You host it yourself on Next.js, Supabase and Mapbox.
 
 Demo: <https://terrola.vercel.app>
 
-![The Terrola demo: the list of places, an open place card with a drawn picture, and the map](docs/demo.jpg)
+![The Terrola demo: the list of places, an open place card with a photo of the Alhambra, and the map](docs/demo.jpg)
 
-The hosted demo on 2026-10-13. Map: © Mapbox, © OpenStreetMap.
+The hosted demo on 2026-10-15 (UTC). Photo: CC0, from Wikimedia Commons. Map: © Mapbox, © OpenStreetMap.
 
 The demo is open and read only, on made up data: twelve invented visits to real places around
 the world, each with a free public domain photo taken there.

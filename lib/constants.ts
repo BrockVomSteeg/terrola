@@ -1,7 +1,8 @@
 // Default map view: the world, from Venezuela in the west to Japan in the east, where
-// the demo's twelve places are (lib/demo/fixtures.ts). [lng, lat].
-export const DEFAULT_CENTER: [number, number] = [32, 28];
-export const DEFAULT_ZOOM = 1.4;
+// the demo's twelve places are (lib/demo/fixtures.ts). The centre sits west of the middle
+// of the places because the list covers the left of the map on wide screens. [lng, lat].
+export const DEFAULT_CENTER: [number, number] = [-5, 28];
+export const DEFAULT_ZOOM = 1.3;
 
 // South-west to north-east corner of the default view: every demo place with some room
 // around it. Used by the title-click view reset.
