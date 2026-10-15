@@ -233,13 +233,32 @@ test.describe("the demo data", () => {
     expect([...used].sort()).toEqual([...CATEGORIES].sort());
   });
 
-  test("lies inside a box around mainland Portugal, far from the test coordinates", () => {
+  // The places a test writes: Null Island and its neighbour, and a few points in
+  // Portugal. A demo place never sits near one, so a leftover test pin cannot hide
+  // among the demo's own.
+  const TEST_COORDINATES: readonly (readonly [number, number])[] = [
+    [0, 0],
+    [1, 1],
+    [38.7, -9.1],
+    [39, -8],
+    [40, -9.1],
+    [40.5, -9.1],
+    [41.1, -8.6],
+  ];
+
+  test("lies on the map, far from the test coordinates", () => {
     for (const { title, lat, lng } of DEMO_LOCATIONS) {
-      expect(lat, title).toBeGreaterThan(36.9);
-      expect(lat, title).toBeLessThan(42.2);
-      expect(lng, title).toBeGreaterThan(-9.6);
-      expect(lng, title).toBeLessThan(-6.1);
+      expect(Number.isFinite(lat) && Number.isFinite(lng), title).toBe(true);
+      expect(Math.abs(lat), title).toBeLessThanOrEqual(90);
+      expect(Math.abs(lng), title).toBeLessThanOrEqual(180);
+      for (const [testLat, testLng] of TEST_COORDINATES) {
+        const apart = Math.max(Math.abs(lat - testLat), Math.abs(lng - testLng));
+        expect(apart, `${title} near ${testLat}, ${testLng}`).toBeGreaterThan(2);
+      }
     }
+    // Twelve different spots, not one pin hiding another.
+    const spots = DEMO_LOCATIONS.map(({ lat, lng }) => `${lat},${lng}`);
+    expect(new Set(spots).size).toBe(spots.length);
   });
 
   test("has a title, a date that parses and text within the app's limits", () => {
@@ -257,16 +276,18 @@ test.describe("the demo data", () => {
     }
   });
 
-  // The demo's pictures are files this app serves itself. A picture belongs to the place
+  // The demo's photos are files this app serves itself. A photo belongs to the place
   // whose id it carries, the cover is the first one, and nothing points anywhere else.
+  // Today each place has exactly one photo of its own.
   test("names only its own pictures, served by the app itself", () => {
     for (const location of DEMO_LOCATIONS) {
       const photos = location.photos ?? [];
       // An id is hex and dashes, so it is safe inside the pattern below.
       expect(location.id).toMatch(/^[0-9a-f-]{36}$/);
+      expect(photos, location.id).toHaveLength(1);
       for (const url of photos) {
         expect(url, location.id).toMatch(
-          new RegExp(`^/demo/location-photos/${location.id}-\\d{13}\\.svg$`),
+          new RegExp(`^/demo/location-photos/${location.id}-\\d{13}\\.jpg$`),
         );
       }
       expect(new Set(photos).size, location.id).toBe(photos.length);
@@ -288,47 +309,67 @@ test.describe("the demo data", () => {
     expect(fs.readdirSync(dir).sort()).toEqual(named);
   });
 
-  // A picture is a drawing and nothing more: it has a size (the photo frame waits for
-  // one), it runs no script and it loads nothing, from this site or any other.
-  test("a picture is a plain drawing that loads nothing", () => {
+  // A photo is a plain JPEG and nothing more: a JFIF header, the tables, one frame with a
+  // size (the photo frame waits for one), no side over 1400 pixels, and the coded image.
+  // It keeps no metadata: no Exif (camera, place, time), no XMP, no colour profile, no
+  // comment, and nothing after the end. Every segment of the file is read, including
+  // those between the scans of a progressive JPEG.
+  test("a picture is a plain JPEG, 1400 pixels at most, with no metadata", () => {
     const dir = path.join(process.cwd(), "public", "demo", "location-photos");
+    // JFIF header, quantization and Huffman tables, restart interval, frame, scan.
+    const ALLOWED = new Set([0xe0, 0xdb, 0xc4, 0xdd, 0xc0, 0xc1, 0xc2, 0xda]);
+    const FRAMES = new Set([0xc0, 0xc1, 0xc2]);
     for (const file of fs.readdirSync(dir)) {
-      const svg = fs.readFileSync(path.join(dir, file), "utf8");
-      expect(svg.startsWith("<svg "), file).toBe(true);
-      expect(svg, file).toMatch(/^<svg [^>]*\swidth="1200"/);
-      expect(svg, file).toMatch(/^<svg [^>]*\sheight="900"/);
-      expect(svg, file).toMatch(/^<svg [^>]*\sviewBox="0 0 1200 900"/);
-      const lower = svg.toLowerCase();
-      for (const banned of [
-        "<script",
-        "<image",
-        "<foreignobject",
-        "<use",
-        "<a ",
-        "<style",
-        // No words in the drawing itself, and nothing that moves.
-        "<text",
-        "<animate",
-        "<set",
-        "href",
-        "@import",
-        "javascript:",
-        "data:",
-        "<!doctype",
-        "<!entity",
-      ]) {
-        expect(lower.includes(banned), `${file}: ${banned}`).toBe(false);
+      const bytes = fs.readFileSync(path.join(dir, file));
+      expect(bytes.length, file).toBeLessThan(400_000);
+      expect([bytes[0], bytes[1]], `${file}: start of image`).toEqual([0xff, 0xd8]);
+      const markers: number[] = [];
+      let width = 0;
+      let height = 0;
+      let ended = false;
+      let at = 2;
+      while (at < bytes.length - 1) {
+        expect(bytes[at], `${file}: a marker at byte ${at}`).toBe(0xff);
+        while (bytes[at + 1] === 0xff) at += 1;
+        const marker = bytes[at + 1];
+        if (marker === 0xd9) {
+          // The end of the image is the end of the file.
+          ended = at + 2 === bytes.length;
+          break;
+        }
+        markers.push(marker);
+        const length = bytes.readUInt16BE(at + 2);
+        if (FRAMES.has(marker)) {
+          height = bytes.readUInt16BE(at + 5);
+          width = bytes.readUInt16BE(at + 7);
+        }
+        at += 2 + length;
+        if (marker === 0xda) {
+          // Coded data: a 0xff in it is followed by 0x00 or a restart marker; anything
+          // else is the next segment.
+          while (
+            at < bytes.length - 1 &&
+            !(
+              bytes[at] === 0xff &&
+              bytes[at + 1] !== 0x00 &&
+              (bytes[at + 1] < 0xd0 || bytes[at + 1] > 0xd7)
+            )
+          ) {
+            at += 1;
+          }
+        }
       }
-      // No event handler attribute such as onload.
-      expect(/\son[a-z]+\s*=/.test(lower), `${file}: event handler`).toBe(false);
-      // The only address is the SVG namespace, and every url() points inside the file.
-      expect(lower.match(/https?:\/\/[^"'\s)]+/g) ?? [], file).toEqual([
-        "http://www.w3.org/2000/svg",
-      ]);
-      expect((lower.match(/url\(/g) ?? []).length, file).toBe(
-        (lower.match(/url\(#/g) ?? []).length,
-      );
-      expect(Buffer.byteLength(svg), file).toBeLessThan(20_000);
+      expect(ended, `${file}: ends with the end of image marker`).toBe(true);
+      expect(markers[0], `${file}: JFIF header first`).toBe(0xe0);
+      expect(bytes.subarray(6, 11).toString("latin1"), file).toBe("JFIF\u0000");
+      for (const marker of markers) {
+        expect(ALLOWED.has(marker), `${file}: segment 0x${marker.toString(16)}`).toBe(true);
+      }
+      expect(markers.filter((marker) => marker === 0xe0), file).toHaveLength(1);
+      expect(markers.filter((marker) => FRAMES.has(marker)), file).toHaveLength(1);
+      expect(width, file).toBeGreaterThan(0);
+      expect(height, file).toBeGreaterThan(0);
+      expect(Math.max(width, height), file).toBeLessThanOrEqual(1400);
     }
   });
 

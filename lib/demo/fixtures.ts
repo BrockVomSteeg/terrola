@@ -1,6 +1,7 @@
-// The demo's data: made up visits to public places in mainland Portugal. Nothing here
-// comes from a real map, a real person or a real trip. Ids are fixed so links and tests
-// stay stable. Every category appears at least once.
+// The demo's data: made up visits to twelve public places around the world, each one
+// where a free photograph was taken. The titles, dates and words are invented; no real
+// person or real trip is behind them. Ids are fixed so links and tests stay stable.
+// Every category appears at least once.
 //
 // Import-free apart from types: safe anywhere.
 import type { Location } from "@/types";
@@ -15,106 +16,108 @@ type Seed = Pick<
 
 const SEEDS: readonly Seed[] = [
   {
-    title: "Pastry stop in Belém",
-    date_label: "2025-09-14",
-    description: "Warm custard tarts by the river, then a walk to the tower.",
+    title: "Pepper stall at the market",
+    date_label: "2025-09-20",
+    description: "Red, green and yellow peppers piled high. Bought far too many for one pan.",
     category: "food",
-    lat: 38.6979,
-    lng: -9.2033,
+    lat: 10.6396,
+    lng: -71.6151,
   },
   {
-    title: "Late music in Bairro Alto",
-    date_label: "2025-09-13",
-    description: "A small room, two guitars and a singer. Standing room only.",
+    title: "Harbour lights in Hong Kong",
+    date_label: "2025-09-06",
+    description: "The towers lit up across the water. Stayed out until the last ferry.",
     category: "nightout",
-    lat: 38.7139,
-    lng: -9.1447,
+    lat: 22.3033,
+    lng: 114.1603,
   },
   {
-    title: "Morning market in Porto",
-    date_label: "2025-08-30",
-    description: "Fruit, bread and coffee before the hill up to the cathedral.",
+    title: "Cherry blossom walk in Kyoto",
+    date_label: "2025-04-05",
+    description: "Pink trees along the river and the mountain behind them. An easy morning.",
     category: "everyday",
-    lat: 41.1496,
-    lng: -8.6062,
+    lat: 35.0485,
+    lng: 135.7852,
   },
   {
-    title: "Cliff beach near Lagos",
-    date_label: "2025-08-17",
-    description: "Wooden stairs down to clear water. Bring shade.",
+    title: "Swim at a quiet lake in Andalusia",
+    date_label: "2025-08-16",
+    description: "Warm water, pale banks and hardly anyone else. Bring a hat.",
     category: "beach",
-    lat: 37.0869,
-    lng: -8.6693,
+    lat: 36.9964,
+    lng: -3.8945,
   },
   {
-    title: "Ridge walk in Serra da Estrela",
-    date_label: "2025-07-26",
-    description: "Granite, wind and a long view east. Four hours there and back.",
+    title: "Canyon hike in Charyn",
+    date_label: "2025-05-03",
+    description: "Red rock walls on both sides and a river at the bottom. Five hours there and back.",
     category: "adventure",
-    lat: 40.3219,
-    lng: -7.6114,
+    lat: 43.3564,
+    lng: 79.092,
   },
   {
-    title: "Weekend in Évora",
-    date_label: "2025-06-21",
-    description: "White streets, a Roman temple and a very slow lunch.",
-    category: "trip",
-    lat: 38.5714,
-    lng: -7.9135,
-  },
-  {
-    title: "Harbour dinner in Cascais",
-    date_label: "2025-05-10",
-    description: "Grilled fish by the harbour and a long table that filled up as the evening went on.",
-    category: "celebration",
-    lat: 38.6979,
-    lng: -9.4215,
-  },
-  {
-    title: "First surf lesson in Nazaré",
-    date_label: "2025-04-19",
-    description: "On the calm beach, not the famous one. Stood up twice.",
-    category: "milestone",
-    lat: 39.6012,
-    lng: -9.07,
-  },
-  {
-    title: "Open air concert in Coimbra",
-    date_label: "2025-03-29",
-    description: "On the old university steps at dusk. The whole square sang along.",
-    category: "concert",
-    lat: 40.2075,
-    lng: -8.4263,
-  },
-  {
-    title: "Palace gardens in Sintra",
+    title: "Dawn at the Alhambra",
     date_label: "2025-03-08",
-    description: "Fog in the trees and a well with a spiral stair.",
-    category: "adventure",
-    lat: 38.7963,
-    lng: -9.3961,
-  },
-  {
-    title: "Boat ride in Aveiro",
-    date_label: "2025-02-15",
-    description: "Painted boats on the canals and sweet egg pastries after.",
+    description: "Up before the sun to see the palace turn gold. Worth the early alarm.",
     category: "trip",
-    lat: 40.6412,
-    lng: -8.6536,
+    lat: 37.181,
+    lng: -3.5928,
   },
   {
-    title: "Harvest lunch in the Douro valley",
-    date_label: "2024-10-05",
-    description: "Terraced vines above the river and a table under a fig tree.",
+    title: "Sunset toast at Juan Griego",
+    date_label: "2025-07-26",
+    description: "Glasses up as the sun went down over the bay. The whole beach clapped.",
+    category: "celebration",
+    lat: 11.0805,
+    lng: -63.9737,
+  },
+  {
+    title: "First summit at the Aiguille Rouge",
+    date_label: "2025-07-12",
+    description: "Snow peaks in every direction and very cold hands. A first time at the top.",
+    category: "milestone",
+    lat: 45.5519,
+    lng: 6.8483,
+  },
+  {
+    title: "Night concert by the Expo Bridge",
+    date_label: "2025-06-21",
+    description: "A stage by the river and the bridge lit up behind it. We danced on the grass.",
+    category: "concert",
+    lat: 36.3726,
+    lng: 127.388,
+  },
+  {
+    title: "Evening at the Temple of Zeus",
+    date_label: "2025-06-07",
+    description: "Tall old columns in the last light, then a slow walk down to dinner.",
+    category: "trip",
+    lat: 37.9691,
+    lng: 23.7335,
+  },
+  {
+    title: "Camp near the Flaming Cliffs",
+    date_label: "2025-05-24",
+    description: "Orange rock, wide sky and a very quiet night in the desert.",
+    category: "adventure",
+    lat: 44.14,
+    lng: 103.7173,
+  },
+  {
+    title: "Dinner below the Segovia aqueduct",
+    date_label: "2025-01-18",
+    description: "A long dinner under the old stone arches, lit up as the sky went dark.",
     category: "food",
-    lat: 41.19,
-    lng: -7.546,
+    lat: 40.9479,
+    lng: -4.1167,
   },
 ];
 
-// The demo's pictures: drawings made in code for this project, kept as files in
-// public/demo/location-photos/ and served by the app itself. Not photographs, and not of
-// real people. A file is named like an uploaded photo, <location id>-<13 digits>.svg.
+// The demo's pictures: real photographs, one for each place, taken where the place is.
+// Each is free to use (CC0 1.0, public domain), resized to 1400 pixels and stripped of
+// its metadata; docs/ASSETS.md names the source page and author of every file. They are
+// kept in public/demo/location-photos/ and served by the app itself. A file is named
+// like an uploaded photo, <location id>-<13 digits>.jpg.
 // Key: the place's number (1 is the first seed). Value: how many pictures it has.
 const PICTURES: Readonly<Record<number, number>> = {
   1: 1,
@@ -135,7 +138,7 @@ const FIRST_STAMP = 1700000000000;
 const pictures = (n: number): string[] =>
   Array.from(
     { length: PICTURES[n] ?? 0 },
-    (_, k) => `/demo/location-photos/${id(n)}-${FIRST_STAMP + k}.svg`,
+    (_, k) => `/demo/location-photos/${id(n)}-${FIRST_STAMP + k}.jpg`,
   );
 
 // Newest first, one day apart, so the order is the same on every run.

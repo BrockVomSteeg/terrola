@@ -30,7 +30,7 @@ export interface ContractSubject {
 const uuid = (n: number): string =>
   `10000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 const picture = (owner: string, n: number): string =>
-  `/demo/location-photos/${owner}-${1700000000000 + n}.svg`;
+  `/demo/location-photos/${owner}-${1700000000000 + n}.jpg`;
 
 /** The stored file name behind a photo address: no folder, no query string. */
 export const nameOf = (address: string): string =>
@@ -45,7 +45,7 @@ export const UNKNOWN = uuid(99);
 export const A_PHOTOS = [picture(A, 1), picture(A, 2), picture(A, 3)];
 const [FIRST, SECOND, THIRD] = A_PHOTOS.map(nameOf);
 // Shaped like a photo of A, held by no store.
-const NOT_STORED = `${A}-1700000000099.svg`;
+const NOT_STORED = `${A}-1700000000099.jpg`;
 
 /** Three locations: A is the oldest and has three pictures, C is the newest. */
 export function contractSeed(): Location[] {

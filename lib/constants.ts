@@ -1,12 +1,13 @@
-// Default map view: mainland Portugal.
-export const DEFAULT_CENTER: [number, number] = [-8.2, 39.6];
-export const DEFAULT_ZOOM = 6.5;
+// Default map view: the world, from Venezuela in the west to Japan in the east, where
+// the demo's twelve places are (lib/demo/fixtures.ts). [lng, lat].
+export const DEFAULT_CENTER: [number, number] = [32, 28];
+export const DEFAULT_ZOOM = 1.4;
 
-// South-west to north-east corner of the default view. Used by the title-click
-// view reset.
+// South-west to north-east corner of the default view: every demo place with some room
+// around it. Used by the title-click view reset.
 export const DEFAULT_BOUNDS: [[number, number], [number, number]] = [
-  [-9.6, 36.9],
-  [-6.1, 42.1],
+  [-78, 5],
+  [142, 50],
 ];
 
 export const CATEGORIES = {
