@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
-import type { Store, StoreResult } from "@/lib/demo/store";
+import { cardName, thumbName } from "@/lib/photos";
+import type { PhotoUpload, Store, StoreResult } from "@/lib/demo/store";
 import type { Location } from "@/types";
 
 // The Store contract (SPEC R17, R4): what EVERY store has to keep, the in-memory demo
@@ -19,6 +20,11 @@ export interface ContractSubject {
   writable: boolean;
   /** Whether it can take new picture files. */
   uploads: boolean;
+  /**
+   * Puts a small picture where `upload` points, as the browser does. Needed when
+   * `uploads` is true: the store hands out the place, it never takes the bytes.
+   */
+  put?: (upload: PhotoUpload) => Promise<void>;
 }
 
 const uuid = (n: number): string =>
@@ -273,6 +279,75 @@ export function storeContract(name: string, subject: ContractSubject): void {
       expect(codeOf(await store.getLocation(B))).toBe("not_found");
       expect(codeOf(await store.deleteLocation(B))).toBe("not_found");
       expect(dataOf(await store.listLocations()).map((l) => l.id)).toEqual([C, A]);
+    });
+
+    // A store with file storage. These cases are always declared, so a store
+    // without uploads shows them as skipped, with the reason, and never as passed.
+    test.describe("with uploads", () => {
+      const SKIP = "this store has no file storage; a run with uploads: true runs these";
+
+      /** An upload place for `id`, with the picture put there. */
+      async function uploaded(store: Store, id: string): Promise<PhotoUpload> {
+        if (!subject.put) throw new Error("uploads: true needs a put function");
+        const upload = dataOf(await store.createPhotoUpload(id));
+        await subject.put(upload);
+        return upload;
+      }
+
+      test("hands out an upload place in the location's namespace, and stores nothing yet", async () => {
+        test.skip(!subject.uploads, SKIP);
+        const store = await open();
+        const before = await snapshot(store);
+        const upload = dataOf(await store.createPhotoUpload(B));
+        const name = nameOf(upload.path);
+        expect(name.startsWith(`${B}-`)).toBe(true);
+        expect(upload.signedUrl).not.toBe("");
+        expect(upload.token).not.toBe("");
+        // A smaller copy is optional; when there is one, it sits next to the photo.
+        if (upload.thumbPath !== null) expect(nameOf(upload.thumbPath)).toBe(thumbName(name));
+        if (upload.cardPath !== null) expect(nameOf(upload.cardPath)).toBe(cardName(name));
+        // Two places for the same location never share a name.
+        const second = dataOf(await store.createPhotoUpload(B));
+        expect(nameOf(second.path)).not.toBe(name);
+        expect(await snapshot(store)).toBe(before);
+      });
+
+      test("registers an uploaded picture as the cover of a location with none", async () => {
+        test.skip(!subject.uploads, SKIP);
+        const store = await open();
+        const upload = await uploaded(store, B);
+        const name = nameOf(upload.path);
+
+        const change = dataOf(await store.registerPhoto(B, upload.path));
+        expect(namesOf(change.photos)).toEqual([name]);
+        expect(nameOf(change.photo_url ?? "")).toBe(name);
+        expect(change.thumbs).toHaveLength(1);
+        expect(change.cards).toHaveLength(1);
+
+        expect(namesOf(dataOf(await store.listPhotos(B)).photos)).toEqual([name]);
+        expect(namesOf(dataOf(await store.getLocation(B)).photos)).toEqual([name]);
+        // Nobody else moved.
+        expect(namesOf(dataOf(await store.listPhotos(A)).photos)).toEqual([FIRST, SECOND, THIRD]);
+      });
+
+      test("adds an uploaded picture after the others, and keeps the cover", async () => {
+        test.skip(!subject.uploads, SKIP);
+        const store = await open();
+        const upload = await uploaded(store, A);
+        const change = dataOf(await store.registerPhoto(A, upload.path));
+        expect(namesOf(change.photos)).toEqual([FIRST, SECOND, THIRD, nameOf(upload.path)]);
+        expect(nameOf(change.photo_url ?? "")).toBe(FIRST);
+      });
+
+      test("removes a registered picture by name", async () => {
+        test.skip(!subject.uploads, SKIP);
+        const store = await open();
+        const upload = await uploaded(store, B);
+        dataOf(await store.registerPhoto(B, upload.path));
+        const gone = dataOf(await store.deletePhoto(B, nameOf(upload.path)));
+        expect(gone).toEqual({ photos: [], thumbs: [], cards: [], photo_url: null });
+        expect(dataOf(await store.listPhotos(B))).toEqual({ photos: [], thumbs: [], cards: [] });
+      });
     });
 
     if (!subject.uploads) {

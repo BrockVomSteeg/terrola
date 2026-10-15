@@ -278,13 +278,14 @@ const locationWrites: Pick<
       if (photoOrder !== undefined) {
         const order = await resolvePhotoOrder(id, photoOrder);
         const signed = await signPhotoFiles(order);
-        // A storage list that failed reads as "no photos" (listLocationPhotoFiles),
-        // and so does a signing step that failed for every photo. A reorder names
-        // at least one photo, so an empty result here is a failure, never an order:
-        // saving it would erase the location's photos.
+        // A failed storage listing throws (listLocationPhotoFiles) and ends as
+        // `failed` below. A signing step that failed for every photo still comes
+        // back as an empty list (signPhotoFiles drops what it cannot sign). A
+        // reorder names at least one photo, so an empty result here is a failure,
+        // never an order: saving it would erase the location's photo list.
         if (signed.length === 0) return refused("failed");
         updates.photos = signed;
-        updates.photo_url = signed[0] ?? null;
+        updates.photo_url = signed[0];
       }
 
       const { data, error } = await getSupabaseAdmin()
