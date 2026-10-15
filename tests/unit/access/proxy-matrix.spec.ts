@@ -381,12 +381,13 @@ test.describe("the matcher", () => {
     }
   });
 
-  // Only a file named like a demo picture skips the proxy. The folder itself, any other
-  // name in it and anything hung behind a picture's name still reach the proxy, which
-  // has no row for them and refuses.
-  test("under /demo only a picture's own name is left out", () => {
-    const picture =
-      "/demo/location-photos/00000000-0000-4000-8000-000000000001-1700000000000.svg";
+  // Only a file named like a demo photo skips the proxy: <location id>-<13 digits>.jpg.
+  // The folder itself, any other name or extension in it, a name with a dot segment and
+  // anything hung behind a photo's name still reach the proxy, which has no row for them
+  // and refuses.
+  test("under /demo only a photo's own name is left out", () => {
+    const id = "00000000-0000-4000-8000-000000000001";
+    const picture = `/demo/location-photos/${id}-1700000000000.jpg`;
     expect(runsOn(picture), picture).toBe(false);
     for (const url of [
       "/demo",
@@ -394,14 +395,34 @@ test.describe("the matcher", () => {
       "/demo/location-photos",
       "/demo/location-photos/",
       "/demo/location-photos/index.html",
+      "/demo/location-photos/photo.jpg",
       "/demo/location-photos/photo.svg",
-      "/demo/location-photos/00000000-0000-4000-8000-000000000001-1700000000000.png",
-      "/demo/location-photos/00000000-0000-4000-8000-000000000001-1700000000000.svg.html",
+      // The old drawings' names, and every other extension.
+      `/demo/location-photos/${id}-1700000000000.svg`,
+      `/demo/location-photos/${id}-1700000000000.png`,
+      `/demo/location-photos/${id}-1700000000000.jpeg`,
+      `/demo/location-photos/${id}-1700000000000.webp`,
+      `/demo/location-photos/${id}-1700000000000.html`,
+      `/demo/location-photos/${id}-1700000000000.jpg.html`,
+      `/demo/location-photos/${id}-1700000000000.jpgx`,
+      `/demo/location-photos/${id}-1700000000000`,
       `${picture}/extra`,
       `${picture}.bak`,
-      "/demo/location-photos/00000000-0000-4000-8000-000000000001-1700000000000.svgz",
-      "/demo/other/00000000-0000-4000-8000-000000000001-1700000000000.svg",
-      "/api/demo/location-photos/00000000-0000-4000-8000-000000000001-1700000000000.svg",
+      // Not 13 digits.
+      `/demo/location-photos/${id}-170000000000.jpg`,
+      `/demo/location-photos/${id}-17000000000000.jpg`,
+      `/demo/location-photos/${id}-.jpg`,
+      // Dot segments, plain and encoded, and dots inside the name.
+      `/demo/location-photos/../../api/locations`,
+      `/demo/location-photos/..%2F..%2Fapi%2Flocations-1700000000000.jpg`,
+      `/demo/location-photos/%2e%2e%2f${id}-1700000000000.jpg`,
+      `/demo/location-photos/${id}..-1700000000000.jpg`,
+      `${picture}/..`,
+      `${picture}/../../../api/locations`,
+      // Another folder.
+      `/demo/other/${id}-1700000000000.jpg`,
+      `/demo/location-photos/sub/${id}-1700000000000.jpg`,
+      `/api/demo/location-photos/${id}-1700000000000.jpg`,
     ]) {
       expect(runsOn(url), url).toBe(true);
     }
