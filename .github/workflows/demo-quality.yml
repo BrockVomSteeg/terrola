@@ -1,0 +1,174 @@
+name: demo-quality
+
+# SPEC R13: accessibility (axe) and Lighthouse checks on the deployed demo.
+# They run against the live demo, not a server inside CI: the map only draws with the
+# Mapbox token, and the demo token works only on the demo address. A server in CI would
+# show the setup screen. See docs/accessibility.md.
+#
+# Triggers: a successful Production deployment (Vercel reports it as a GitHub
+# deployment), a manual run, and once a week. No secrets are used. Nothing is uploaded
+# anywhere except this run's own artifacts, kept for 7 days.
+
+on:
+  deployment_status:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 6 * * 1'
+
+# Least privilege: the jobs only read the repo.
+permissions:
+  contents: read
+
+# A newer deployment makes an older check pointless.
+concurrency:
+  group: demo-quality
+  cancel-in-progress: true
+
+jobs:
+  target:
+    # Only a successful Production deployment counts; Preview deployments and other
+    # states skip the whole run.
+    if: >-
+      github.event_name != 'deployment_status' ||
+      (github.event.deployment_status.state == 'success' &&
+       github.event.deployment_status.environment == 'Production')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      url: ${{ steps.pick.outputs.url }}
+      ref: ${{ steps.pick.outputs.ref }}
+    steps:
+      - name: Stop if the kill switch is on
+        if: ${{ vars.AUTONOMY_KILL_SWITCH == 'true' }}
+        run: |
+          echo "AUTONOMY_KILL_SWITCH is true"
+          exit 1
+
+      # Event text is passed through env and never placed inside the script.
+      # Vercel reports each deployment's own address (terrola-<hash>-....vercel.app); the
+      # demo token does not work there, so the production alias is always what is tested.
+      # The event address is used only when it is the alias itself.
+      - name: Pick the address and the commit to check
+        id: pick
+        env:
+          ALIAS: https://terrola.vercel.app
+          EVENT_NAME: ${{ github.event_name }}
+          EVENT_URL: ${{ github.event.deployment_status.environment_url }}
+          EVENT_SHA: ${{ github.event.deployment.sha }}
+        run: |
+          base="$ALIAS"
+          if [ "$EVENT_NAME" = "deployment_status" ]; then
+            trimmed="${EVENT_URL%/}"
+            if [ "$trimmed" = "$ALIAS" ]; then
+              base="$trimmed"
+            else
+              echo "The deployment address is not the production alias; checking the alias."
+            fi
+          fi
+          ref="main"
+          if [ "$EVENT_NAME" = "deployment_status" ]; then
+            case "$EVENT_SHA" in
+              *[!0-9a-f]* | "") echo "::error::deployment sha is not a commit id"; exit 1 ;;
+            esac
+            ref="$EVENT_SHA"
+          fi
+          echo "url=$base" >> "$GITHUB_OUTPUT"
+          echo "ref=$ref" >> "$GITHUB_OUTPUT"
+          echo "Checking $base/map with tests from $ref"
+
+  axe:
+    needs: target
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Stop if the kill switch is on
+        if: ${{ vars.AUTONOMY_KILL_SWITCH == 'true' }}
+        run: |
+          echo "AUTONOMY_KILL_SWITCH is true"
+          exit 1
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ needs.target.outputs.ref }}
+          persist-credentials: false
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Install Chromium for Playwright
+        run: node_modules/.bin/playwright install --with-deps chromium
+
+      - name: Accessibility checks (axe) on the demo
+        run: npm run test:e2e
+        env:
+          E2E_BASE: ${{ needs.target.outputs.url }}
+
+      - name: Keep the Playwright report
+        if: ${{ always() }}
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
+        with:
+          name: axe-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
+          if-no-files-found: ignore
+
+  lighthouse:
+    needs: target
+    runs-on: ubuntu-24.04
+    # Five mobile runs with simulated slow network and CPU.
+    timeout-minutes: 20
+    steps:
+      - name: Stop if the kill switch is on
+        if: ${{ vars.AUTONOMY_KILL_SWITCH == 'true' }}
+        run: |
+          echo "AUTONOMY_KILL_SWITCH is true"
+          exit 1
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ needs.target.outputs.ref }}
+          persist-credentials: false
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      # Uses the Google Chrome already on the runner. Settings are in lighthouserc.json:
+      # mobile preset, 5 runs, the median is judged.
+      - name: Lighthouse, collect 5 runs
+        id: collect
+        run: node_modules/.bin/lhci collect --url="$TARGET_URL/map"
+        env:
+          TARGET_URL: ${{ needs.target.outputs.url }}
+
+      - name: Lighthouse, assert the scores
+        run: node_modules/.bin/lhci assert
+
+      # The "filesystem" target only writes files on the runner; nothing leaves it except
+      # the artifact below.
+      - name: Write the Lighthouse reports to disk
+        if: ${{ !cancelled() && steps.collect.outcome == 'success' }}
+        run: node_modules/.bin/lhci upload
+
+      - name: Keep the Lighthouse reports
+        if: ${{ always() }}
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
+        with:
+          name: lighthouse-report
+          path: |
+            lighthouse-report/
+            .lighthouseci/assertion-results.json
+          include-hidden-files: true
+          retention-days: 7
+          if-no-files-found: ignore
