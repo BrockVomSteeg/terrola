@@ -7,8 +7,8 @@ nothing about how the maintainer or anyone else runs a copy.
 
 The demo stores nothing about visitors.
 
-- Its data is eighteen made up visits to public places (twelve around the world, six in
-  Kyoto), held in server memory
+- Its data is eighteen made up visits to public places (eleven around the world, seven
+  in Kyoto), held in server memory
   ([`lib/demo/fixtures.ts`](lib/demo/fixtures.ts),
   [`lib/demo/memory-store.ts`](lib/demo/memory-store.ts);
   [test](tests/unit/access/memory-store.spec.ts), "is eighteen pins with fixed, distinct ids").
